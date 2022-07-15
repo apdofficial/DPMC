@@ -50,3 +50,5 @@ git clone --recursive https://github.com/vardigroup/DPMC
 - [Tamaki](https://github.com/TCS-Meiji/PACE2017-TrackA): Tamaki
 - [TensorOrder](https://github.com/vardigroup/TensorOrder): Dudek, Duenas-Osorio, Vardi
 - [WAPS](https://github.com/meelgroup/WAPS): Gupta, Sharma, Roy, Meel
+
+test commit
