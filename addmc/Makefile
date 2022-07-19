@@ -1,6 +1,6 @@
 ## in dir src/: file common.hh is included by files dmc.hh and htb.hh
 
-GXX = g++-11
+GXX = g++
 
 # opt = -Ofast # be careful with inf and nan
 ASSEMBLY_OPTIONS = -g -std=c++2a -Wno-register $(opt)

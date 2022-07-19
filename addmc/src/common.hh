@@ -14,6 +14,7 @@
 #include <sys/time.h>
 #include <thread>
 #include <unordered_set>
+#include <iterator>
 
 #include <gmpxx.h>
 
