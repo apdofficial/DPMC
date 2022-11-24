@@ -734,14 +734,16 @@ Dd Executor::solveSubtree(const JoinNode* joinNode, const Map<Int, Int>& cnfVarT
     return d;
   }
 
-  vector<Dd> childDdList;
-  for (JoinNode* child : joinNode->children) {
-    childDdList.push_back(solveSubtree(child, cnfVarToDdVarMap, ddVarToCnfVarMap, mgr, assignment));
-  }
-
   TimePoint nonterminalStartPoint = util::getTimePoint();
   Dd dd = Dd::getOneDd(mgr);
 
+  vector<Dd> childDdList;
+  for (JoinNode* child : joinNode->children) {
+    Dd childDd = solveSubtree(child, cnfVarToDdVarMap, ddVarToCnfVarMap, mgr, assignment);
+    // refDD = childDD
+    dd = dd.getProduct(childDd);
+  }
+/*
   if (joinPriority == ARBITRARY_PAIR) { // arbitrarily multiplies child decision diagrams
     for (Dd childDd : childDdList) {
       dd = dd.getProduct(childDd);
@@ -763,8 +765,13 @@ Dd Executor::solveSubtree(const JoinNode* joinNode, const Map<Int, Int>& cnfVarT
     }
     dd = childDdQueue.top();
   }
-
+ */ 
   for (Int cnfVar : joinNode->projectionVars) {
+    if  ((JoinNode::cnf.literalWeights.at(cnfVar) != Number(1) && JoinNode::cnf.literalWeights.at(cnfVar) != Number(0.5))||(JoinNode::cnf.literalWeights.at(-cnfVar) != Number(1) && JoinNode::cnf.literalWeights.at(-cnfVar) != Number(0.5))){
+      //continue;
+    } else {
+      // continue;
+    }
     Int ddVar = cnfVarToDdVarMap.at(cnfVar);
 
     bool additiveFlag = JoinNode::cnf.outerVars.contains(cnfVar);
@@ -790,7 +797,7 @@ Dd Executor::solveSubtree(const JoinNode* joinNode, const Map<Int, Int>& cnfVarT
       }
     }
   }
-
+  
   updateVarDurations(joinNode, nonterminalStartPoint);
   updateVarDdSizes(joinNode, dd);
 

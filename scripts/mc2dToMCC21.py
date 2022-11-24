@@ -22,8 +22,8 @@ with open(outF,'w') as o:
 					'''
 					if litWts[currLit] == litWts[nexLit]:
 						#scale both up to 1
-						o.write('c p weight '+str(currLit)+' 0.5\n')
-						o.write('c p weight '+str(nexLit)+' 0.5\n')
+						o.write('c p weight '+str(currLit)+' 1\n')
+						o.write('c p weight '+str(nexLit)+' 1\n')
 						i += 2
 						continue
 					'''
