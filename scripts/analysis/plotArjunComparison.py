@@ -11,8 +11,9 @@ def loadData():
 		htdTWs = json.load(f)
 	with open("arjun_no-proj_Data.json", 'r') as f:
 		anpTWs = json.load(f)
-
-	return arjunTWs, htdTWs, anpTWs
+	with open("colamd_Data.json", 'r') as f: #colamd is also on arjun_no-proj files
+		colamdRes = json.load(f) # is a dictionary with 4 lists of tws, one for each of 7bet, 7bmt, m7bmt, m7bet
+	return arjunTWs, htdTWs, anpTWs, colamdRes
 
 def plotBars(plList, thresh, plotPMC = False):
 	print(plList)
@@ -71,8 +72,44 @@ def plotArjunComparison(hl, anpl, thresh):
 		#plt.savefig('graphs/primal-incidence_comparison/mcc21_track1-2.png',bbox_inches='tight')
 		plt.show()		
 		j += 1
+
+def plotColAMDComparison(anpl, cRes, thresh):
+	j = 0
+	for r in [list(range(100)),list(range(100,200)),list(range(200,300)),list(range(300,400))]:
+		fig, ax = plt.subplots()
+		out2 = []
+		bestconfs = []
+		for ind in r:
+			bestTW = thresh
+			bestConf = None
+			for conf in ['7bmt','m7bmt','7bet','m7bet']:
+				if len(cRes[conf][ind][1]) == 0:
+					continue
+				else:
+					currTw = cRes[conf][ind][1][-1]
+					if  currTw <= bestTW:
+						bestTW = currTw
+						bestConf = conf	 
+			bestconfs.append(bestConf)
+			out2.append(bestTW)
+		ax.bar(range(100), out2, label='ColAMD', alpha=0.8)
+		l = anpl
+		out1 = []
+		for ind in r:
+			out1.append(thresh if len(l[ind][1])==0 else l[ind][1][-1] if l[ind][1][-1] < thresh else thresh)
+		ax.bar(range(100), out1, label='HTD', alpha=0.8)
 		
-al, hl, anpl = loadData()
+		print(['MCC21_t1','MCC21_t2','MCC22_t1','MCC22_t2'][j],bestconfs)
+		ax.set_ylabel('TWs')
+		ax.set_title(['MCC21_t1','MCC21_t2','MCC22_t1','MCC22_t2'][j])
+		ax.legend()
+		#plt.savefig('graphs/primal-incidence_comparison/mcc21_track1-2.png',bbox_inches='tight')
+		plt.show()		
+		j += 1
+
+		
+al, hl, anpl, cRes = loadData() # cRes is a dictionary with 4 lists of tws, one for each of 7bet, 7bmt, m7bmt, m7bet
 #plotFC(fl)
 #plotHTDComparison(al, hl, 300)
-plotArjunComparison(hl, anpl, 300)
+#plotArjunComparison(hl, anpl, 300)
+plotColAMDComparison(anpl, cRes, 500)

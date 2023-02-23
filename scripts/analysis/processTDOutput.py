@@ -1,4 +1,4 @@
-from outputFileProcessors import processTDFile
+from outputFileProcessors import processTDFile, processHTBFile
 import json
 from sys import argv
 from os.path import exists
@@ -68,6 +68,19 @@ def processArjunHTDOutput(resDir, nFiles):
 		fp.close()
 	return tws
 
+def processColAMDOutput(resDir):
+	expectedName = None
+	res = {}
+	for sdir in ['7bmt','m7bmt','7bet','m7bet']:
+		tws = []
+		for i in range(400):
+			fp = open(resDir+'/'+sdir+'/td_array_'+str(i)+'.out')
+			nvars, twList = processHTBFile(fp, expectedName)
+			tws.append([nvars,twList])
+			fp.close()
+		res[sdir]=tws
+	return res
+
 if tdType == 1:	
 	print("Process fc...")
 	fcDir = '/home/adi/Downloads/prob_inf/results/td/flowcutter/output/'
@@ -99,3 +112,10 @@ elif tdType == 5:
 	tws = processArjunHTDOutput(htdDir, 800)
 	with open("arjun_no-proj_Data.json", 'w') as f:
 		json.dump(tws, f, indent=2)
+
+elif tdType == 6:
+	print("Process arjun_no-proj colamd htb...")
+	htdDir = '/home/adi/Downloads/prob_inf/results/td/colamd/output/arjun_no-proj/mcc/'
+	res = processColAMDOutput(htdDir)
+	with open("colamd_Data.json", 'w') as f: #colamd was also run on arjun_no-proj .
+		json.dump(res, f, indent=3)
