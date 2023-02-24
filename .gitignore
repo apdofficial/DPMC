@@ -17,6 +17,9 @@ htb/htb
 lg/build
 lg/solvers/flow-cutter-pace17/flow_cutter_pace17
 lg/solvers/htd-master/build
+lg/solvers/htd-master/bin
+
+scripts/cnfs
 
 __pycache__
 *.pyc
@@ -27,6 +30,11 @@ venv
 *.swp
 
 .vscode
+
+dmc/dmc_original
+tests
+experiments
+experiments.zip
 
 ################################################################################
 ## GitHub default: C

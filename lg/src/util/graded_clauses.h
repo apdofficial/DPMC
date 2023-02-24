@@ -25,6 +25,7 @@ class GradedClauses {
    * Output the line graph of this clause set.
    */
   void write_line_graph(std::ostream *output, size_t num_variables) const;
+  void write_hyper_line_graph(std::ostream *output, size_t num_variables) const;
 
   size_t clause_id() const {
     return clause_id_;

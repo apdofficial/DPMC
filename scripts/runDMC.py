@@ -5,6 +5,7 @@ pw = 0
 dmc = ''
 if len(sys.argv)>2:
 	pw = int(sys.argv[2])
+
 sa = 0
 if len(sys.argv)>3:
 	sa = int(sys.argv[3])

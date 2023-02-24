@@ -30,6 +30,28 @@ void GradedClauses::write_line_graph(
   write_line_graph_edges(output);
 }
 
+void GradedClauses::write_hyper_line_graph(
+  std::ostream *output,
+  size_t num_variables
+) const {
+  size_t num_edges = components_.size();
+  *output << "p htd " << num_variables << " " << num_edges << "\n";
+  std::cout<< "p htd " << num_variables << " " << num_edges << "\n";
+  uint32_t i = 0;
+  for (auto gc : components_){
+    i++;
+    *output << i;
+    std::cout << i;
+    for (auto v : gc.variables_){
+      *output <<" " << v;
+      std::cout <<" " << v;
+    }
+    *output << "\n";
+    std::cout << "\n";
+  }
+  assert(i == num_edges);
+}
+
 size_t GradedClauses::count_line_graph_edges() const {
   size_t total = (variables_.size() * (variables_.size()-1)) / 2;
   for (const GradedClauses &clause : components_) {

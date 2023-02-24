@@ -1288,8 +1288,12 @@ Dd Executor::solveSubtree(const JoinNode* joinNode, const Map<Int, Int>& cnfVarT
       assert (!sup.contains(ddVar));
     }
   } else{
-
   for (Int cnfVar : joinNode->projectionVars) {
+    if  ((JoinNode::cnf.literalWeights.at(cnfVar) != Number(1) && JoinNode::cnf.literalWeights.at(cnfVar) != Number(0.5))||(JoinNode::cnf.literalWeights.at(-cnfVar) != Number(1) && JoinNode::cnf.literalWeights.at(-cnfVar) != Number(0.5))){
+      //continue;
+    } else {
+      // continue;
+    }
     Int ddVar = cnfVarToDdVarMap.at(cnfVar);
 
     bool additiveFlag = JoinNode::cnf.outerVars.contains(cnfVar);

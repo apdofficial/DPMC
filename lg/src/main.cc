@@ -17,15 +17,16 @@ int main(int argc, char *argv[]) {
   // Print help message
   if (argc == 2 &&
       (strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0)) {
-      std::cout << argv[0] << " [TREE DECOMPOSER]" << std::endl;
+      std::cout << argv[0] << " [TREE DECOMPOSER] [H]" << std::endl;
       std::cout << "    Use [TREE DECOMPOSER] to make join trees." << std::endl;
+      std::cout << "    H: if second parameter is present and 'H', then use hypertree decompositions" << std::endl;
       std::cout << "    Input formula is parsed from STDIN." << std::endl;
       std::cout << "    Join trees are written to STDOUT." << std::endl;
       return 0;
   }
 
-  if (argc != 2) {
-    std::cerr << "Error: Exactly 1 argument required." << std::endl;
+  if (argc > 3) {
+    std::cerr << "Error: At most 2 arguments required." << std::endl;
     return -1;
   }
 
@@ -51,7 +52,14 @@ int main(int argc, char *argv[]) {
 
     // Provide the line graph of the input formula to the solver.
     util::GradedClauses clauses = f->graded_clauses();
-    clauses.write_line_graph(&solver_input, f->num_variables());
+    if ((argc == 3) && (strcmp(argv[2], "H") == 0)) {
+      std::cout << "c Writing hypergraph.. " << std::endl;
+      clauses.write_hyper_line_graph(&solver_input, f->num_variables());
+    } else {
+      std::cout << "c Writing graph.. " << std::endl;
+      clauses.write_line_graph(&solver_input, f->num_variables());
+    }
+    
     solver_input.flush();
     solver_input.pipe().close();
 
