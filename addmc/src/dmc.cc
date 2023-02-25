@@ -513,6 +513,9 @@ size_t Dd::getLeafCount() const {
 
 size_t Dd::getNodeCount() const {
   if (ddPackage == CUDD_PACKAGE) {
+    if (cuadd.getNode()==0){
+      return cubdd.nodeCount();
+    }
     return cuadd.nodeCount();
   }
   return mtbdd.NodeCount();
@@ -828,8 +831,8 @@ Dd Dd::getProduct(const Dd& dd) const {
     return logCounting ? Dd(cuadd + dd.cuadd) : Dd(cuadd * dd.cuadd);
   }
   if (multiplePrecision) {
-    LACE_ME;
-    return Dd(Mtbdd(gmp_times(mtbdd.GetMTBDD(), dd.mtbdd.GetMTBDD())));
+    // LACE_ME;
+    // return Dd(Mtbdd(gmp_times(mtbdd.GetMTBDD(), dd.mtbdd.GetMTBDD())));
   }
   return Dd(mtbdd * dd.mtbdd);
 }
@@ -839,8 +842,8 @@ Dd Dd::getSum(const Dd& dd) const {
     return logCounting ? Dd(cuadd.LogSumExp(dd.cuadd)) : Dd(cuadd + dd.cuadd);
   }
   if (multiplePrecision) {
-    LACE_ME;
-    return Dd(Mtbdd(gmp_plus(mtbdd.GetMTBDD(), dd.mtbdd.GetMTBDD())));
+    // LACE_ME;
+    // return Dd(Mtbdd(gmp_plus(mtbdd.GetMTBDD(), dd.mtbdd.GetMTBDD())));
   }
   return Dd(mtbdd + dd.mtbdd);
 }
@@ -850,8 +853,8 @@ Dd Dd::getMax(const Dd& dd) const {
     return Dd(cuadd.Maximum(dd.cuadd));
   }
   if (multiplePrecision) {
-    LACE_ME;
-    return Dd(Mtbdd(gmp_max(mtbdd.GetMTBDD(), dd.mtbdd.GetMTBDD())));
+    // LACE_ME;
+    // return Dd(Mtbdd(gmp_max(mtbdd.GetMTBDD(), dd.mtbdd.GetMTBDD())));
   }
   return Dd(mtbdd.Max(dd.mtbdd));
 }
@@ -1005,14 +1008,35 @@ Dd SatFilter::solveSubtree(const JoinNode* joinNode, const Map<Int, Int>& cnfVar
       // cout << "c after recurse\n";
     }
 
-    
+    if (joinPriority == ARBITRARY_PAIR) { // arbitrarily multiplies child decision diagrams
+      for (Dd childDd : childDdList) {
+        prod = prod.getBddAnd(childDd);
+      }
+    }
+    else { // Dd::operator< handles both biggest-first and smallest-first
+      std::priority_queue<Dd> childDdQueue;
+      childDdQueue.push(prod);
+      for (Dd childDd : childDdList) {
+        childDdQueue.push(childDd);
+      }
+      assert(!childDdQueue.empty());
+      while (childDdQueue.size() >= 2) {
+        Dd dd1 = childDdQueue.top();
+        childDdQueue.pop();
+        Dd dd2 = childDdQueue.top();
+        childDdQueue.pop();
+        Dd dd3 = dd1.getBddAnd(dd2);
+        childDdQueue.push(dd3);
+      }
+      prod = childDdQueue.top();
+    }
     // cout << "c 4\n";
     // if (joinPriority == ARBITRARY_PAIR) { // arbitrarily multiplies child decision diagrams
-      for (Dd childDd : childDdList) {
-        // cout << "c 5\n";
-        prod = prod.getBddAnd(childDd);
-        // cout << "c 6\n";
-      }
+      // for (Dd childDd : childDdList) {
+      //   // cout << "c 5\n";
+      //   prod = prod.getBddAnd(childDd);
+      //   // cout << "c 6\n";
+      // }
   // }
   }
   Dd retDD = Dd::getOneDd(mgr);
@@ -1288,12 +1312,8 @@ Dd Executor::solveSubtree(const JoinNode* joinNode, const Map<Int, Int>& cnfVarT
       assert (!sup.contains(ddVar));
     }
   } else{
+
   for (Int cnfVar : joinNode->projectionVars) {
-    if  ((JoinNode::cnf.literalWeights.at(cnfVar) != Number(1) && JoinNode::cnf.literalWeights.at(cnfVar) != Number(0.5))||(JoinNode::cnf.literalWeights.at(-cnfVar) != Number(1) && JoinNode::cnf.literalWeights.at(-cnfVar) != Number(0.5))){
-      //continue;
-    } else {
-      // continue;
-    }
     Int ddVar = cnfVarToDdVarMap.at(cnfVar);
 
     bool additiveFlag = JoinNode::cnf.outerVars.contains(cnfVar);
@@ -1994,11 +2014,16 @@ void OptionDict::runCommand() const {
     }
     const Cudd* mgr = 0;
     if (ddPackage == SYLVAN_PACKAGE) { // initializes Sylvan
-      lace_init(threadCount, 0);
-      lace_startup(0, NULL, NULL);
-      sylvan::sylvan_set_limits(maxMem * MEGA, tableRatio, initRatio);
-      sylvan::sylvan_init_package();
-      sylvan::sylvan_init_mtbdd();
+      lace_start(1, 1000000); // auto-detect number of workers, use a 1,000,000 size task queue
+      // Init Sylvan  
+      sylvan_set_limits(2LL<<30, 1, 10);
+      sylvan_init_package();
+      sylvan_init_mtbdd();
+      // lace_init(threadCount, 0);
+      // lace_startup(0, NULL, NULL);
+      // sylvan::sylvan_set_limits(maxMem * MEGA, tableRatio, initRatio);
+      // sylvan::sylvan_init_package();
+      // sylvan::sylvan_init_mtbdd();
       if (multiplePrecision) {
         sylvan::gmp_init();
       }
@@ -2037,7 +2062,7 @@ void OptionDict::runCommand() const {
     
     if (ddPackage == SYLVAN_PACKAGE) { // quits Sylvan
       sylvan::sylvan_quit();
-      lace_exit();
+      lace_stop();
     }
   }
   catch (UnsatException) {

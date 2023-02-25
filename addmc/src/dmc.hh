@@ -7,6 +7,7 @@
 #include "../libraries/cudd/cplusplus/cuddObj.hh"
 #include "../libraries/cudd/cudd/cuddInt.h"
 
+#include "../libraries/sylvan/src/sylvan.h"
 #include "../libraries/sylvan/src/sylvan_gmp.h"
 #include "../libraries/sylvan/src/sylvan_obj.hpp"
 
@@ -26,6 +27,11 @@ using sylvan::mtbdd_getvalue;
 using sylvan::mtbdd_gmp;
 using sylvan::mtbdd_leafcount_more;
 using sylvan::mtbdd_makenode;
+
+using sylvan::sylvan_set_limits;
+using sylvan::sylvan_init_package;
+using sylvan::sylvan_init_mtbdd;
+
 using sylvan::Mtbdd;
 using sylvan::MTBDD;
 

@@ -1,6 +1,5 @@
 ## in dir src/: file common.hh is included by files dmc.hh and htb.hh
 
-
 ## GXX = g++-11
 GXX = g++
 
@@ -24,8 +23,10 @@ SYLVAN_DIR = libraries/sylvan
 SYLVAN_BUILD_DIR = $(SYLVAN_DIR)/build
 SYLVAN_LIB_DIR = $(SYLVAN_BUILD_DIR)/src
 SYLVAN_TARGET = $(SYLVAN_LIB_DIR)/libsylvan.a
-SYLVAN_INCLUSIONS = -I$(SYLVAN_DIR)/src
+SYLVAN_INCLUSIONS = -I$(SYLVAN_DIR)/src -I$(SYLVAN_BUILD_DIR)/_deps/lace-src/src/ -I$(SYLVAN_BUILD_DIR)/_deps/lace-build
 SYLVAN_LINKS = -L$(SYLVAN_LIB_DIR) -lsylvan
+
+LACE_LINKS = -L$(SYLVAN_BUILD_DIR)/_deps/lace-build -llace
 
 CMSAT_DIR = libraries/cryptominisat
 CMSAT_BUILD_DIR = $(CMSAT_DIR)/build
@@ -44,7 +45,7 @@ HTB_OBJECTS = common.o htb.o
 .ONESHELL: # for all targets
 
 dmc: $(DMC_OBJECTS)
-	$(GXX) -o dmc $(DMC_OBJECTS) $(CUDD_LINKS) $(SYLVAN_LINKS) $(CMSAT_LINKS) $(COLAMD_LINKS) $(LINK_OPTIONS)
+	$(GXX) -o dmc $(DMC_OBJECTS) $(CUDD_LINKS) $(SYLVAN_LINKS) $(LACE_LINKS) $(CMSAT_LINKS) $(COLAMD_LINKS) $(LINK_OPTIONS)
 
 htb: $(HTB_OBJECTS)
 	$(GXX) -o htb $(HTB_OBJECTS) $(COLAMD_LINKS) $(LINK_OPTIONS)
@@ -67,7 +68,7 @@ $(CUDD_TARGET): $(shell find $(CUDD_DIR)/cudd -name "*.c" -o -name "*.h") $(shel
 $(SYLVAN_TARGET):
 	mkdir -p $(SYLVAN_BUILD_DIR)
 	cd $(SYLVAN_BUILD_DIR)
-	cmake .. -DBUILD_SHARED_LIBS=off
+	cmake .. -DBUILD_SHARED_LIBS=off -DSYLVAN_GMP=on
 	make -s
 
 $(CMSAT_TARGET):
