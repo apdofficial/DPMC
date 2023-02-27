@@ -30,7 +30,7 @@ def processOutput(resDir, exps, fPrefix, processor):
 if tdType == 1:	
 	print("Process DPMC...")
 	fcDir = '/home/adi/Downloads/prob_inf/results/dpmc/arjun_no-proj/'
-	allStats = processOutput(fcDir,[1,2,3,4,5,6,7,8],'dpmc',processDPMCFile)
+	allStats = processOutput(fcDir,[1,2,3,4,5,6,6.5,7,8],'dpmc',processDPMCFile)
 	with open("dpmcData.json", 'w') as f:
 		json.dump(allStats, f, indent=2) 
 elif tdType == 2:

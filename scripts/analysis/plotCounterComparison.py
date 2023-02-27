@@ -46,9 +46,14 @@ def plotComparison(lists):
 
 dS, sS = loadData()
 lists = []
-labels=['dummy','vanilla-htd','jp=f,sa=2,aa=1','jp=f,sa=0,aa=1','vanilla-fc','jp=f,sa=0,aa=0','jp=s,sa=2,aa=1','jp=s,sa=0,aa=0 (vanilla 1ca0c commit)','jp=s, sa=0, aa=1','sstd']
+labels=['dummy','vanilla-htd','jp=f,sa=2,aa=1','jp=f,sa=0,aa=1','vanilla-fc','jp=f,sa=0,aa=0','jp=s,sa=2,aa=1','jp=s,sa=0,aa=0 (vanilla 1ca0c commit)','jp=s, sa=0, aa=1','sstd','jp=s for both satfilter and executor (6.5)']
 for i in range(1,len(sys.argv)):
-	ind = int(sys.argv[i])
+	ind = float(sys.argv[i])
+	if ind != 6.5:
+		ind = int(ind)
+		indSub = ind
+	else:
+		indSub = 10
 	if ind < 9:
 		l = dS[str(ind)] #json always stores keys as strings
 	else:
@@ -57,8 +62,8 @@ for i in range(1,len(sys.argv)):
 	memouts = [k for k in range(400) if l[k][0] > 29000000]
 	for item in memouts:
 		assert(l[item][1][-2] == None)
-	toAppend = [times,labels[ind],memouts,mkrs[i],i]
-	if ind == 2 or ind == 6: #satfilter was active so check if satfilter was completed
+	toAppend = [times,labels[indSub],memouts,mkrs[i],i]
+	if ind == 2 or ind == 6 or ind == 6.5: #satfilter was active so check if satfilter was completed
 		sC = [item[1][0] for item in l] #filter constructed
 		sA = [item[1][1] for item in l] #filter applied
 		toAppend.append(sC)

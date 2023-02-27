@@ -832,7 +832,7 @@ Dd Dd::getProduct(const Dd& dd) const {
   }
   if (multiplePrecision) {
     // LACE_ME;
-    // return Dd(Mtbdd(gmp_times(mtbdd.GetMTBDD(), dd.mtbdd.GetMTBDD())));
+    return Dd(Mtbdd(gmp_times(mtbdd.GetMTBDD(), dd.mtbdd.GetMTBDD())));
   }
   return Dd(mtbdd * dd.mtbdd);
 }
@@ -843,7 +843,7 @@ Dd Dd::getSum(const Dd& dd) const {
   }
   if (multiplePrecision) {
     // LACE_ME;
-    // return Dd(Mtbdd(gmp_plus(mtbdd.GetMTBDD(), dd.mtbdd.GetMTBDD())));
+    return Dd(Mtbdd(gmp_plus(mtbdd.GetMTBDD(), dd.mtbdd.GetMTBDD())));
   }
   return Dd(mtbdd + dd.mtbdd);
 }
@@ -854,7 +854,7 @@ Dd Dd::getMax(const Dd& dd) const {
   }
   if (multiplePrecision) {
     // LACE_ME;
-    // return Dd(Mtbdd(gmp_max(mtbdd.GetMTBDD(), dd.mtbdd.GetMTBDD())));
+    return Dd(Mtbdd(gmp_max(mtbdd.GetMTBDD(), dd.mtbdd.GetMTBDD())));
   }
   return Dd(mtbdd.Max(dd.mtbdd));
 }

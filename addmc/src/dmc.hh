@@ -36,6 +36,7 @@ using sylvan::Mtbdd;
 using sylvan::MTBDD;
 
 using sylvan::Bdd;
+using sylvan::mtbdd_apply_RUN;
 
 using CMSat::Lit;
 using CMSat::lbool; // generally uint8_t; typically {l_True, l_False, l_Undef}
