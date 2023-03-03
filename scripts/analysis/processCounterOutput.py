@@ -13,9 +13,9 @@ def processOutput(resDir, exps, fPrefix, processor):
 	tDir = resDir + '/timing/'
 	expectedName = None
 	allStats = {}
-	for j in exps:
+	for j in exps.keys():
 		stats = []
-		for i in range(400):
+		for i in exps[j]:
 			fp = open(tDir+'/'+str(j)+'/'+fPrefix+'_array_'+str(i)+'.time')
 			line = fp.readline()
 			fp.close()
@@ -30,7 +30,9 @@ def processOutput(resDir, exps, fPrefix, processor):
 if tdType == 1:	
 	print("Process DPMC...")
 	fcDir = '/home/adi/Downloads/prob_inf/results/dpmc/arjun_no-proj/'
-	allStats = processOutput(fcDir,[1,2,3,4,5,6,6.5,7,8],'dpmc',processDPMCFile)
+	expNos = [1,2,3,3.5,4,5,6,6.5,7,8]
+	exps = {exp:list(range(400)) if exp != 3.5 else list(range(100))+list(range(200,300)) for exp in expNos}
+	allStats = processOutput(fcDir,exps,'dpmc',processDPMCFile)
 	with open("dpmcData.json", 'w') as f:
 		json.dump(allStats, f, indent=2) 
 elif tdType == 2:

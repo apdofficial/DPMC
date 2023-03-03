@@ -46,20 +46,29 @@ def plotComparison(lists):
 
 dS, sS = loadData()
 lists = []
-labels=['dummy','vanilla-htd','jp=f,sa=2,aa=1','jp=f,sa=0,aa=1','vanilla-fc','jp=f,sa=0,aa=0','jp=s,sa=2,aa=1','jp=s,sa=0,aa=0 (vanilla 1ca0c commit)','jp=s, sa=0, aa=1','sstd','jp=s for both satfilter and executor (6.5)']
+labels=['dummy','vanilla-htd','jp=f,sa=2,aa=1','jp=f,sa=0,aa=1','vanilla-fc','jp=f,sa=0,aa=0','jp=s,sa=2,aa=1','jp=s,sa=0,aa=0 (vanilla 1ca0c commit)','jp=s, sa=0, aa=1','sstd','jp=s for both satfilter and executor (6.5)', 'jp=f,sa=0,aa=1 in-built addabstract only unweighted']
 for i in range(1,len(sys.argv)):
 	ind = float(sys.argv[i])
-	if ind != 6.5:
+	if ind != 6.5 and ind != 3.5:
 		ind = int(ind)
 		indSub = ind
-	else:
+	elif ind == 6.5:
 		indSub = 10
+	elif ind == 3.5:
+		indSub =11
+	
 	if ind < 9:
 		l = dS[str(ind)] #json always stores keys as strings
 	else:
 		l = sS['1']
-	times = [item[1][-2] if item[1][-2] != None else 1000 for item in l]
-	memouts = [k for k in range(400) if l[k][0] > 29000000]
+	
+	if ind != 3.5:
+		times = [item[1][-2] if item[1][-2] != None else 1000 for item in l]
+		memouts = [k for k in range(400) if l[k][0] > 29000000]
+	else: #only unweighted so pad the weighted indices with timeouts. ignoring memouts.
+		allowedExps = list(range(100))+list(range(200,300))
+		times = [l[k if k<100 else k-100][1][-2] if k in allowedExps and l[k if k<100 else k-100][1][-2] != None else 1000 for k in range(400)]
+		memouts = [(k if k<100 else k-100) for k in range(400) if k in allowedExps and l[k if k<100 else k-100][0] > 29000000]
 	for item in memouts:
 		assert(l[item][1][-2] == None)
 	toAppend = [times,labels[indSub],memouts,mkrs[i],i]

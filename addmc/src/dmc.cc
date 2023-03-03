@@ -742,30 +742,34 @@ Float getNegWt(Int ddVar){
 
 Dd Dd::getAddSumAbstract(const Set<Int>& cnfVars, const Map<Int,Int>& cnfVarToDdVarMap, Map<Int, Number>& literalWeights, const Cudd* mgr){
   if (ddPackage == CUDD_PACKAGE){
-    ADD wCube = mgr->addOne();
-    for (auto& cnfVar : cnfVars){
-      Int ddVar = cnfVarToDdVarMap.at(cnfVar);
-      ADD v = mgr->addVar(ddVar);
-      wCube *= v;
-    //   if(ddVar==227){
-    //     cout<<"227!!!\n";
-    //   }
-    //   // cout<<ddVar<<":"<<var<<":"<<val<<" ";
-    //   Float negWt = 0;
-    //   if (weightedCounting){
-    //     negWt = literalWeights.at(-cnfVar).fraction;
-    //     if (negWt == 1){
-    //       assert (literalWeights.at(cnfVar).fraction==1);
-    //       negWt = 0;
-    //     }
-    //     cout<<ddVar<<":"<<negWt<<"  "<<literalWeights.at(-cnfVar).fraction<<":"<<literalWeights.at(cnfVar).fraction<<"\n"; 
-    //   }
-    //   wCube = v.Ite(wCube,mgr->constant(negWt));
-    }
-    // cout<<"\n";
-    // cout<<"EA\n";
-    return logCounting? cuadd.WeightedLogSumExistAbstract(wCube, getNegWt) : cuadd.WeightedExistAbstract(wCube, getNegWt);
-    // cout<<"EA done\n";
+      ADD wCube = mgr->addOne();
+      for (auto& cnfVar : cnfVars){
+        Int ddVar = cnfVarToDdVarMap.at(cnfVar);
+        ADD v = mgr->addVar(ddVar);
+        wCube *= v;
+      //   if(ddVar==227){
+      //     cout<<"227!!!\n";
+      //   }
+      //   // cout<<ddVar<<":"<<var<<":"<<val<<" ";
+      //   Float negWt = 0;
+      //   if (weightedCounting){
+      //     negWt = literalWeights.at(-cnfVar).fraction;
+      //     if (negWt == 1){
+      //       assert (literalWeights.at(cnfVar).fraction==1);
+      //       negWt = 0;
+      //     }
+      //     cout<<ddVar<<":"<<negWt<<"  "<<literalWeights.at(-cnfVar).fraction<<":"<<literalWeights.at(cnfVar).fraction<<"\n"; 
+      //   }
+      //   wCube = v.Ite(wCube,mgr->constant(negWt));
+      }
+      // cout<<"\n";
+      // cout<<"EA\n";
+      if (weightedCounting){
+        return logCounting? cuadd.WeightedLogSumExistAbstract(wCube, getNegWt) : cuadd.WeightedExistAbstract(wCube, getNegWt);
+      } else {
+        return logCounting? cuadd.LogSumExistAbstract(wCube) : cuadd.ExistAbstract(wCube);
+      }
+      // cout<<"EA done\n";
   } else{
     vector<Int> ddVars;
     for(auto& cnfVar : cnfVars){
