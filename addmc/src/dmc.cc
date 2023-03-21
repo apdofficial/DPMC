@@ -573,7 +573,7 @@ Dd Dd::getConstDd(const Number& n, const Cudd* mgr) {
     mpq_clear(q);
     return dd;
   }
-  return Dd(Mtbdd::doubleTerminal(n.fraction));
+  return logCounting ? Dd(Mtbdd::doubleTerminal(n.getLog10())) : Dd(Mtbdd::doubleTerminal(n.fraction));
 }
 
 Dd Dd::getZeroDd(const Cudd* mgr) {
@@ -592,8 +592,11 @@ Dd Dd::getVarDd(Int ddVar, bool val, const Cudd* mgr) {
     ADD d = mgr->addVar(ddVar);
     return val ? Dd(d) : Dd(d.Cmpl());
   }
-  MTBDD d0 = getZeroDd(mgr).mtbdd.GetMTBDD();
-  MTBDD d1= getOneDd(mgr).mtbdd.GetMTBDD();
+  MTBDD d0 = getZeroDd(mgr).mtbdd.GetMTBDD(); // handles logcounting case
+  MTBDD d1= getOneDd(mgr).mtbdd.GetMTBDD(); // handles logcounting case
+  // if (logCounting){
+  //   return val? Dd(Mtbdd(sylvan::mtbdd_makenode(ddVar, d0, d1)).Log()) : Dd(Mtbdd(sylvan::mtbdd_makenode(ddVar, d1, d0)).Log());
+  // }
   return val ? Dd(Mtbdd(sylvan::mtbdd_makenode(ddVar, d0, d1))) : Dd(Mtbdd(sylvan::mtbdd_makenode(ddVar, d1, d0)));
 }
 
@@ -707,7 +710,7 @@ Dd Dd::getAdd(){
   if (ddPackage == CUDD_PACKAGE){
     return logCounting? Dd(cubdd.Add().Log()) : Dd(cubdd.Add());
   } else{
-    return Dd(Mtbdd(sybdd));
+    return logCounting? Dd(Mtbdd(sybdd).Log()): Dd(Mtbdd(sybdd));
   }
 }
 
@@ -771,6 +774,7 @@ Dd Dd::getAddSumAbstract(const Set<Int>& cnfVars, const Map<Int,Int>& cnfVarToDd
       }
       // cout<<"EA done\n";
   } else{
+    assert(!weightedCounting);
     vector<Int> ddVars;
     for(auto& cnfVar : cnfVars){
       ddVars.push_back(cnfVarToDdVarMap.at(cnfVar));
@@ -779,7 +783,7 @@ Dd Dd::getAddSumAbstract(const Set<Int>& cnfVars, const Map<Int,Int>& cnfVarToDd
     for (auto& v : ddVars){
       b.add((uint32_t)v);
     }
-    return mtbdd.AbstractPlus(b);
+    return logCounting? mtbdd.AbstractLogSumExp(b) : mtbdd.AbstractPlus(b);
     
   }
 }
@@ -838,7 +842,7 @@ Dd Dd::getProduct(const Dd& dd) const {
     // LACE_ME;
     return Dd(Mtbdd(gmp_times(mtbdd.GetMTBDD(), dd.mtbdd.GetMTBDD())));
   }
-  return Dd(mtbdd * dd.mtbdd);
+  return logCounting? Dd(mtbdd + dd.mtbdd) : Dd(mtbdd * dd.mtbdd);
 }
 
 Dd Dd::getSum(const Dd& dd) const {
@@ -849,7 +853,7 @@ Dd Dd::getSum(const Dd& dd) const {
     // LACE_ME;
     return Dd(Mtbdd(gmp_plus(mtbdd.GetMTBDD(), dd.mtbdd.GetMTBDD())));
   }
-  return Dd(mtbdd + dd.mtbdd);
+  return logCounting? Dd(mtbdd.LogSumExp(dd.mtbdd)) : Dd(mtbdd + dd.mtbdd);
 }
 
 Dd Dd::getMax(const Dd& dd) const {
@@ -1744,13 +1748,13 @@ Executor::Executor(const JoinNonterminal* joinRoot, Int ddVarOrderHeuristic, Int
   // Number solution = solveCnf(joinRoot, cnfVarToDdVarMap, ddVarToCnfVarMap, sliceVarOrderHeuristic);
   Number solution;
   Executor::executorStartPoint = util::getTimePoint();
-  if (ddPackage == SYLVAN_PACKAGE) {
-    solution = solveSubtree(
-      static_cast<const JoinNode*>(joinRoot),
-      cnfVarToDdVarMap,
-      ddVarToCnfVarMap
-    ).extractConst();
-  } else{
+  // if (ddPackage == SYLVAN_PACKAGE) {
+  //   solution = solveSubtree(
+  //     static_cast<const JoinNode*>(joinRoot),
+  //     cnfVarToDdVarMap,
+  //     ddVarToCnfVarMap
+  //   ).extractConst();
+  // } else{
     Dd res = solveSubtree(static_cast<const JoinNode*>(joinRoot), cnfVarToDdVarMap, ddVarToCnfVarMap, mgr);
     cout << "Size of map is "<<ddVarToCnfVarMap.size()<<" Support ddvar cnfvar is\n";
     for (auto& r : res.getSupport()){
@@ -1762,7 +1766,7 @@ Executor::Executor(const JoinNonterminal* joinRoot, Int ddVarOrderHeuristic, Int
     // }
     Number partialSolution = res.extractConst();
     solution = logCounting ? Number(-INF).getLogSumExp(partialSolution) : partialSolution;
-  }
+  // }
 
   // printVarDurations();
   // printVarDdSizes();
@@ -1938,7 +1942,7 @@ string OptionDict::helpSatFilter() {
 }
 
 string OptionDict::helpAtomicAbstract() {
-  return "0/1 - Disable/Enable single step abstraction operation. (to enable, er_arg=0 pc_arg=0 dp_arg=c required) Default 0.";
+  return "0/1 - Disable/Enable single step abstraction operation. (to enable, er_arg=0 pc_arg=0 dp_arg=c or if dp_arg=s then additionally wc_arg=0 required) Default 0.";
 }
 
 void OptionDict::runCommand() const {
@@ -2018,9 +2022,9 @@ void OptionDict::runCommand() const {
     }
     const Cudd* mgr = 0;
     if (ddPackage == SYLVAN_PACKAGE) { // initializes Sylvan
-      lace_start(1, 1000000); // auto-detect number of workers, use a 1,000,000 size task queue
+      lace_start(threadCount, 0); // auto-detect number of workers, use a 1,000,000 size task queue
       // Init Sylvan  
-      sylvan_set_limits(2LL<<30, 1, 10);
+      sylvan_set_limits(maxMem*MEGA, tableRatio, initRatio);
       sylvan_init_package();
       sylvan_init_mtbdd();
       // lace_init(threadCount, 0);
@@ -2094,7 +2098,7 @@ OptionDict::OptionDict(int argc, char** argv) {
     (PROJECTED_COUNTING_OPTION, "projected counting (graded join tree): 0, 1; int", value<Int>()->default_value("0"))
     (EXIST_RANDOM_OPTION, "exist-random SAT (max-sum instead of sum-max): 0, 1; int", value<Int>()->default_value("0"))
     (DD_PACKAGE_OPTION, helpDdPackage(), value<string>()->default_value(CUDD_PACKAGE))
-    (LOG_COUNTING_OPTION, "logarithmic counting" + requireDdPackage(CUDD_PACKAGE) + ": 0, 1; int", value<Int>()->default_value("0"))
+    (LOG_COUNTING_OPTION, "logarithmic counting: 0, 1; int", value<Int>()->default_value("0"))
     (LOG_BOUND_OPTION, helpLogBound(), value<string>()->default_value(to_string(-INF))) // cxxopts fails to parse "-inf" as Float
     (THRESHOLD_MODEL_OPTION, helpThresholdModel(), value<string>()->default_value(""))
     (SAT_SOLVER_PRUNING, helpSatSolverPruning(), value<Int>()->default_value("0"))
@@ -2140,7 +2144,7 @@ OptionDict::OptionDict(int argc, char** argv) {
     assert(DD_PACKAGES.contains(ddPackage));
 
     logCounting = result[LOG_COUNTING_OPTION].as<Int>(); // global var
-    assert(!logCounting || ddPackage == CUDD_PACKAGE);
+    //assert(!logCounting || ddPackage == CUDD_PACKAGE); //now sylvan supports log counting
 
     // cout<<"Logbound:" << result[LOG_BOUND_OPTION].as<string>()<<"\n";
     // logBound = stold(result[LOG_BOUND_OPTION].as<string>()); // global var
@@ -2197,7 +2201,8 @@ OptionDict::OptionDict(int argc, char** argv) {
     assert(satFilter >= 0 && satFilter <=2);
 
     atomicAbstract = result[ATOMIC_ABSTRACT_OPTION].as<Int>();
-    assert((atomicAbstract == false) || (projectedCounting == false && existRandom == false && ddPackage == CUDD_PACKAGE));
+    assert((atomicAbstract == false) || (projectedCounting == false && existRandom == false && ddPackage == CUDD_PACKAGE) || 
+      (projectedCounting == false && existRandom == false && weightedCounting == false && ddPackage == SYLVAN_PACKAGE));
 
     ddVarOrderHeuristic = result[DD_VAR_OPTION].as<Int>();
     assert(CNF_VAR_ORDER_HEURISTICS.contains(abs(ddVarOrderHeuristic)));
