@@ -307,3 +307,5 @@ TSWLatexianTemp*
 
 # KBibTeX
 *~[0-9]*
+
+addmc/.DS_Store
