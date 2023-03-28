@@ -30,7 +30,7 @@ ENV ADDMC=$DPMC/addmc
 ENV DMC=$DPMC/dmc
 
 ENV ADDMC_LIBS=$ADDMC/libraries
-ENV SUITE_SPARSE=$HOME/SuiteSparse-4.0.2
+ENV SUITE_SPARSE=$ADDMC_LIBS/SuiteSparse
 
 # copy source files
 COPY ./ $HOME/
