@@ -73,15 +73,26 @@ def parseMCC21CNF(inF, verbose = 1):
 	assert clsCounter == nCls
 	f.close()
 	if wEncountered: #fill up values of remaining lits
-		keys = litWts.keys()
-		for el in keys:
-			assert el <= nVars and el > 0
-			val = litWts[el]
-			assert isclose(val,1) or isclose(val,0) or (val < 1 and val > 0)
-			if -el not in keys:
-				litWts[-el] = 1 - val
-			else:
-				assert isclose(litWts[-el], 1 - val)
+		if False:
+			for el in range(1,nVars+1):
+				if el in litWts.keys() and -el in litWts.keys():
+					val1 = litWts[el]
+					assert isclose(val1,1) or isclose(val1,0) or (val1 < 1 and val1 > 0)
+					val2 = litWts[-el]
+					assert isclose(val2,1) or isclose(val2,0) or (val2 < 1 and val2 > 0)
+					assert isclose(val1, 1 - val2) or (isclose(val1,1) and isclose(val2,1))
+				elif el in litWts.keys() and -el not in litWts.keys():
+					val = litWts[el]
+					assert isclose(val,1) or isclose(val,0) or (val < 1 and val > 0)
+					litWts[-el] = 1 - val
+				elif el not in litWts.keys() and -el in litWts.keys():
+					val = litWts[-el]
+					assert isclose(val,1) or isclose(val,0) or (val < 1 and val > 0)
+					litWts[el] = 1 - val
+				else:
+					litWts[el] = 1
+					litWts[-el] = -1
+				
 	for el in projVars:
 		assert el <= nVars and el > 0
 	for el in inds:

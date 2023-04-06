@@ -1984,7 +1984,7 @@ void OptionDict::runCommand() const {
       printRow("threadSliceCount", threadSliceCount);
     }
     printRow("randomSeed", randomSeed);
-    printRow("diagramVarOrderHeuristic", (ddVarOrderHeuristic < 0 ? "INVERSE_" : "") + CNF_VAR_ORDER_HEURISTICS.at(abs(ddVarOrderHeuristic)));
+    printRow("diagramVarOrderHeuristic", (ddVarOrderHeuristic < 0 ? "INVERSE_" : ""));// + CNF_VAR_ORDER_HEURISTICS.at(abs(ddVarOrderHeuristic)));
     if (ddPackage == CUDD_PACKAGE) {
       printRow("sliceVarOrderHeuristic", (sliceVarOrderHeuristic < 0 ? "INVERSE_" : "") + util::getVarOrderHeuristics().at(abs(sliceVarOrderHeuristic)));
       printRow("memSensitivityMegabytes", memSensitivity);
@@ -2022,7 +2022,7 @@ void OptionDict::runCommand() const {
     }
     const Cudd* mgr = 0;
     if (ddPackage == SYLVAN_PACKAGE) { // initializes Sylvan
-      lace_start(threadCount, 0); // auto-detect number of workers, use a 1,000,000 size task queue
+      lace_start(threadCount, 1000000); // auto-detect number of workers, use a 1,000,000 size task queue
       // Init Sylvan  
       sylvan_set_limits(maxMem*MEGA, tableRatio, initRatio);
       sylvan_init_package();
@@ -2043,7 +2043,8 @@ void OptionDict::runCommand() const {
     }
     TimePoint ddVarOrderStartPoint = util::getTimePoint();
     const JoinNonterminal* joinRoot = joinTreeProcessor.getJoinTreeRoot();
-    vector<Int> ddVarToCnfVarMap = joinRoot->getVarOrder(ddVarOrderHeuristic); // e.g. [42, 13], i.e. ddVarOrder
+    vector<Int> ddVarToCnfVarMap ;
+    ddVarToCnfVarMap = joinRoot->getVarOrder(ddVarOrderHeuristic); // e.g. [42, 13], i.e. ddVarOrder
     if (verboseSolving >= 1) {
       printRow("diagramVarSeconds", util::getDuration(ddVarOrderStartPoint));
     }
@@ -2205,7 +2206,7 @@ OptionDict::OptionDict(int argc, char** argv) {
       (projectedCounting == false && existRandom == false && weightedCounting == false && ddPackage == SYLVAN_PACKAGE));
 
     ddVarOrderHeuristic = result[DD_VAR_OPTION].as<Int>();
-    assert(CNF_VAR_ORDER_HEURISTICS.contains(abs(ddVarOrderHeuristic)));
+    //assert(CNF_VAR_ORDER_HEURISTICS.contains(abs(ddVarOrderHeuristic)));
 
     assert(!result.count(SLICE_VAR_OPTION) || threadSliceCount > 1);
     sliceVarOrderHeuristic = result[SLICE_VAR_OPTION].as<Int>();

@@ -30,7 +30,7 @@ def processOutput(resDir, exps, fPrefix, processor):
 if tdType == 1:	
 	print("Process DPMC...")
 	fcDir = '/home/adi/Downloads/prob_inf/results/dpmc/arjun_no-proj/'
-	expNos = [1,2,3,3.5,4,5,6,6.5,7,8]
+	expNos = [1,2,3,3.5,4,5,6,6.5,7,8,10,11,12]
 	exps = {exp:list(range(400)) if exp != 3.5 else list(range(100))+list(range(200,300)) for exp in expNos}
 	allStats = processOutput(fcDir,exps,'dpmc',processDPMCFile)
 	with open("dpmcData.json", 'w') as f:
@@ -38,6 +38,6 @@ if tdType == 1:
 elif tdType == 2:
 	print("Process sstd...")
 	fcDir = '/home/adi/Downloads/prob_inf/results/sstd/arjun_no-proj/'
-	allStats = processOutput(fcDir,[1],'sstd',processSSTDFile)
+	allStats = processOutput(fcDir,{1:list(range(400))},'sstd',processSSTDFile)
 	with open("sstdData.json", 'w') as f:
 		json.dump(allStats, f, indent=2)  

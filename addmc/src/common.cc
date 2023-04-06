@@ -1,3 +1,4 @@
+#include <tuple>
 #include "common.hh"
 
 /* global vars ============================================================== */
@@ -320,6 +321,18 @@ Int Graph::getMinFillVertex() const {
   }
 
   return vertex;
+}
+
+Graph Graph::projectOnto(Set<Int> vars) const{
+  Graph graph(vars);
+  for (auto& var1 : vars){
+    for (auto& var2: vars){
+      if (isNeighbor(var1,var2)){
+        graph.addEdge(var1,var2);
+      }
+    }
+  }
+  return graph;
 }
 
 /* class Label ============================================================== */
@@ -1161,17 +1174,71 @@ vector<Int> JoinNonterminal::getHighestNodeVarOrder() const {
   return varOrder;
 }
 
+vector<Int> JoinNonterminal::getLexPVarOrder() const {
+  Set<Int> processedVars;
+  vector<Int> varOrder;
+  Graph fullPrimalGraph = JoinNode::cnf.getPrimalGraph();
+  vector<Int> tiebreakerinv = JoinNode::cnf.getMostClausesVarOrder();
+  Map<Int, Int> tiebreaker;
+  for (Int i = 0; i<tiebreakerinv.size(); i++){
+    tiebreaker[tiebreakerinv[i]] = i; 
+  }
+  std::queue<const JoinNonterminal*> q;
+  q.push(this);
+  while (!q.empty()) {
+    const JoinNonterminal* n = q.front();
+    q.pop();
+    auto vo = n->getLexPVarRanking(fullPrimalGraph, processedVars, tiebreaker);
+    varOrder.insert(varOrder.end(),vo.begin(),vo.end());
+    for (const JoinNode* child : n->children) {
+      if (!child->isTerminal()) {
+        q.push(static_cast<const JoinNonterminal*>(child));
+      }
+    }
+  }
+  return varOrder;
+}
+
+bool commp(const std::pair<Int,std::tuple<Label,Int>> a, const std::pair<Int,std::tuple<Label,Int>> b){
+  return a.second < b.second;
+}
+
+vector<Int> JoinNonterminal::getLexPVarRanking(Graph fullPrimalGraph, Set<Int>& processedVars, Map<Int, Int> tiebreaker) const {
+  Set<Int> varSet = util::getDiff(preProjectionVars, processedVars);
+  Map<Int, std::tuple<Label,Int>> unnumberedVertices;
+  for (Int vertex : varSet) {
+    unnumberedVertices[vertex] = {Label(),tiebreaker.at(vertex)};
+  }
+  vector<Int> numberedVertices; // whose alpha numbers are decreasing
+  Graph curGraph = fullPrimalGraph.projectOnto(varSet);
+  for (Int number = varSet.size(); number > 0; number--) {
+    Int vertex = max_element(unnumberedVertices.begin(), unnumberedVertices.end(), commp)->first; // ignores label
+    numberedVertices.push_back(vertex);
+    unnumberedVertices.erase(vertex);
+    for (Int neighbor : curGraph.adjacencyMap.at(vertex)) {
+      auto unnumberedNeighborIt = unnumberedVertices.find(neighbor);
+      if (unnumberedNeighborIt != unnumberedVertices.end()) {
+        Int unnumberedNeighbor = unnumberedNeighborIt->first;
+        std::get<0>(unnumberedVertices.at(unnumberedNeighbor)).addNumber(number);
+      }
+    }
+  }
+  processedVars.insert(varSet.begin(),varSet.end());
+  return numberedVertices;
+}
+
 vector<Int> JoinNonterminal::getVarOrder(Int varOrderHeuristic) const {
   if (CNF_VAR_ORDER_HEURISTICS.contains(abs(varOrderHeuristic))) {
     return cnf.getCnfVarOrder(varOrderHeuristic);
   }
 
   vector<Int> varOrder;
-  if (abs(varOrderHeuristic) == BIGGEST_NODE_HEURISTIC) {
+  if (abs(varOrderHeuristic) == BIGGEST_NODE_HEURISTIC) { // 8
     varOrder = getBiggestNodeVarOrder();
-  }
-  else {
-    assert(abs(varOrderHeuristic) == HIGHEST_NODE_HEURISTIC);
+  } else if (abs(varOrderHeuristic)== 10){
+    varOrder = getLexPVarOrder();
+  } else {
+    assert(abs(varOrderHeuristic) == HIGHEST_NODE_HEURISTIC); //9
     varOrder = getHighestNodeVarOrder();
   }
 
