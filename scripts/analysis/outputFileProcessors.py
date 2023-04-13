@@ -52,8 +52,11 @@ def processDPMCFile(fp, expectedFName=None, expectedFPath=None):
 	totTime = None
 	sfConstructed = False
 	sfApplied = False
+	tw = None
 	for line in fp:
-		if 'c Done constructing SatFilter.' in line:
+		if line.startswith('c joinTreeWidth'):
+			tw = int(line.split()[-1])
+		elif 'c Done constructing SatFilter.' in line:
 			sfConstructed = True
 		elif 'c Done Applying SatFilter!' in line:
 			sfApplied = True	
@@ -64,7 +67,7 @@ def processDPMCFile(fp, expectedFName=None, expectedFPath=None):
 		elif "DUE TO TIME LIMIT" in line:
 			endTime = parser.parse(line.split("DUE")[0].split()[-1]).replace(tzinfo=stTime.tzinfo)
 	duration = (endTime - stTime)/timedelta(seconds=1)
-	return sfConstructed, sfApplied, totTime, duration
+	return sfConstructed, sfApplied, tw, totTime, duration
 	
 def processSSTDFile(fp, expectedFName=None, expectedFPath=None):
 	fp.readline()
@@ -79,7 +82,10 @@ def processSSTDFile(fp, expectedFName=None, expectedFPath=None):
 	if expectedFName!=None:
 		assert (fName == expectedFName)
 	totTime = None
+	tw = None
 	for line in fp:
+		if line.startswith('c o width '):
+			tw = int(line.split()[-1])
 		if line.startswith('c o Solved.'):
 			totTime = float(line.split()[-1])
 		elif "slurm job finished at" in line:
@@ -87,7 +93,7 @@ def processSSTDFile(fp, expectedFName=None, expectedFPath=None):
 		elif "DUE TO TIME LIMIT" in line:
 			endTime = parser.parse(line.split("DUE")[0].split()[-1]).replace(tzinfo=stTime.tzinfo)
 	duration = (endTime - stTime)/timedelta(seconds=1)
-	return totTime, duration
+	return tw, totTime, duration
 
 
 #fp = open('/home/adi/Downloads/prob_inf/results/dpmc/arjun_no-proj/output/1/dpmc_array_0.out','r')

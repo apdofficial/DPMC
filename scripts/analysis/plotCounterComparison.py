@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import json
 
 #list indexes should be entered as command line arguments
-#1-5 dpmc 6:sstd
+#1-8,10 dpmc 9:sstd
 
 colors=['green','blue','red','brown','orange']
 mkrs= ['dummy','^','+','x','D','o']
@@ -28,13 +28,15 @@ def plotComparison(lists):
 	for r in [list(range(100)),list(range(100,200)),list(range(200,300)),list(range(300,400))]:
 		fig, ax = plt.subplots()
 		for l in lists:
-			ax.plot([item%100 for item in l[2] if item in r], [1005+10*l[4] for item in l[2] if item in r], marker=l[3], linestyle="", alpha=0.8)#, color="r")		
+			ax.plot([item%100 for item in l[2][0] if item in r], [1005+10*l[4] for item in l[2][0] if item in r], marker=l[3], linestyle="", alpha=0.8)#, color="r")		
+			for i in range(100):
+				ax.text(i,100+(l[4]-1)*100,str(l[2][1][r[i]]),rotation='vertical',rotation_mode=None, ha='center', va='bottom') 
 			ax.bar(range(100), [l[0][i] for i in r], label=l[1]+' '+l[3], alpha=0.8)
 			if len(l)>7:
 				sC = [i%100 for i in r if l[5][i]==True and l[0][i]>998]
 				sA = [i%100 for i in r if l[6][i]==True and l[0][i]>998]
-				ax.plot(sC,[l[7]*100-10]*len(sC),marker = 'o', alpha=0.8, linestyle="", color='g')
-				ax.plot(sA,[l[7]*100+10]*len(sA),marker = 'x', alpha=0.8, linestyle="",color='g')
+				ax.plot(sC,[len(lists)*100+(l[4]+1)*100-10]*len(sC),marker = 'o', alpha=0.8, linestyle="", color='w')
+				ax.plot(sA,[len(lists)*100+(l[4]+1)*100+10]*len(sA),marker = 'x', alpha=0.8, linestyle="",color='w')
 		ax.set_ylabel('Time')
 		ax.set_title(['MCC21_t1','MCC21_t2','MCC22_t1','MCC22_t2'][j])
 		ax.legend()
@@ -46,18 +48,18 @@ def plotComparison(lists):
 
 dS, sS = loadData()
 lists = []
-labels=['dummy','vanilla-htd','jp=f,sa=2,aa=1','jp=f,sa=0,aa=1','vanilla-fc','jp=f,sa=0,aa=0','jp=s,sa=2,aa=1','jp=s,sa=0,aa=0 (vanilla 1ca0c commit)','jp=s, sa=0, aa=1','sstd','jp=s for both satfilter and executor (6.5)', 'jp=f,sa=0,aa=1 in-built addabstract only unweighted']
+labels=['dummy','vanilla-htd','jp=f,sa=2,aa=1','jp=f,sa=0,aa=1','vanilla-fc','jp=f,sa=0,aa=0','jp=s,sa=2,aa=1','jp=s,sa=0,aa=0 (vanilla 1ca0c commit)','jp=s, sa=0, aa=1','sstd','sylvan jp=f sa=2 aa=1 for unweighted aa=0 for weighted','sylvan jp=f sa=2 dv=5 aa=1 for unweighted aa=0 for weighted','sylvan jp=s sa=0 aa=0','jp=s for both satfilter and executor (6.5)', 'jp=f,sa=0,aa=1 in-built addabstract only unweighted']
 for i in range(1,len(sys.argv)):
 	ind = float(sys.argv[i])
 	if ind != 6.5 and ind != 3.5:
 		ind = int(ind)
 		indSub = ind
 	elif ind == 6.5:
-		indSub = 10
+		indSub = 13
 	elif ind == 3.5:
-		indSub =11
+		indSub =14
 	
-	if ind < 9:
+	if ind < 9 or ind >= 10:
 		l = dS[str(ind)] #json always stores keys as strings
 	else:
 		l = sS['1']
@@ -65,14 +67,16 @@ for i in range(1,len(sys.argv)):
 	if ind != 3.5:
 		times = [item[1][-2] if item[1][-2] != None else 1000 for item in l]
 		memouts = [k for k in range(400) if l[k][0] > 29000000]
+		tws = [item[1][-3] for item in l]
 	else: #only unweighted so pad the weighted indices with timeouts. ignoring memouts.
 		allowedExps = list(range(100))+list(range(200,300))
 		times = [l[k if k<100 else k-100][1][-2] if k in allowedExps and l[k if k<100 else k-100][1][-2] != None else 1000 for k in range(400)]
 		memouts = [(k if k<100 else k-100) for k in range(400) if k in allowedExps and l[k if k<100 else k-100][0] > 29000000]
+		tws = [l[k if k<100 else k-100][1][-3] if k in allowedExps else None for k in range(400)]
 	for item in memouts:
 		assert(l[item][1][-2] == None)
-	toAppend = [times,labels[indSub],memouts,mkrs[i],i]
-	if ind == 2 or ind == 6 or ind == 6.5: #satfilter was active so check if satfilter was completed
+	toAppend = [times,labels[indSub],[memouts,tws],mkrs[i],i]
+	if ind == 2 or ind == 6 or ind == 6.5 or ind >= 10: #satfilter was active so check if satfilter was completed
 		sC = [item[1][0] for item in l] #filter constructed
 		sA = [item[1][1] for item in l] #filter applied
 		toAppend.append(sC)

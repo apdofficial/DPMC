@@ -101,8 +101,8 @@ const map<Int, string> CNF_VAR_ORDER_HEURISTICS = {
 };
 
 /* JT var order heuristics: */
-const Int BIGGEST_NODE_HEURISTIC = 7;
-const Int HIGHEST_NODE_HEURISTIC = 8;
+const Int BIGGEST_NODE_HEURISTIC = 8;
+const Int HIGHEST_NODE_HEURISTIC = 9;
 const map<Int, string> JOIN_TREE_VAR_ORDER_HEURISTICS = {
   {BIGGEST_NODE_HEURISTIC, "BIGGEST_NODE"},
   {HIGHEST_NODE_HEURISTIC, "HIGHEST_NODE"}
@@ -286,6 +286,7 @@ public:
   void fillInEdges(Int v); // does not remove `v`
   Int getFillInEdgeCount(Int v) const;
   Int getMinFillVertex() const;
+  Graph projectOnto(Set<Int> vars) const;
 };
 
 class Label : public vector<Int> { // for lexicographic search
@@ -422,6 +423,8 @@ public:
   void updateVarSizes(Map<Int, size_t>& varSizes) const override;
   vector<Int> getBiggestNodeVarOrder() const;
   vector<Int> getHighestNodeVarOrder() const;
+  vector<Int> getLexPVarOrder() const;
+  vector<Int> getLexPVarRanking(Graph fullPrimalGraph,Set<Int>& processedVars, Map<Int, Int> tiebreaker) const;
   vector<Int> getVarOrder(Int varOrderHeuristic) const;
 
   vector<Assignment> getOuterAssignments(Int varOrderHeuristic, Int sliceVarCount) const;
