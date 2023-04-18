@@ -1,5 +1,8 @@
 #include "dmc.hh"
 #include "util/util.h"
+#include "sylvan_int.h"
+#include "sylvan_common.h"
+
 /* global vars ============================================================== */
 
 bool existRandom;
@@ -998,6 +1001,7 @@ Dd SatFilter::solveSubtree(const JoinNode* joinNode, const Map<Int, Int>& cnfVar
   }
 
   TimePoint nonterminalStartPoint = util::getTimePoint();
+
   // cout << "c 3\n";
   Dd prod = Dd::getOneBdd(mgr);
   
@@ -1237,7 +1241,7 @@ Dd Executor::getClauseDd(const Map<Int, Int>& cnfVarToDdVarMap, const Clause& cl
 }
 
 Dd Executor::solveSubtree(const JoinNode* joinNode, const Map<Int, Int>& cnfVarToDdVarMap, const vector<Int>& ddVarToCnfVarMap, const Cudd* mgr, const Assignment& assignment) {
-  // cout<<"Starting visit of joinNode number "<<joinNode->nodeIndex+1<<"\n";
+   cout<<"Starting visit of joinNode number "<<joinNode->nodeIndex+1<<"\n";
   if (joinNode->isTerminal()) {
     TimePoint terminalStartPoint = util::getTimePoint();
 
@@ -1945,6 +1949,52 @@ string OptionDict::helpAtomicAbstract() {
   return "0/1 - Disable/Enable single step abstraction operation. (to enable, er_arg=0 pc_arg=0 dp_arg=c or if dp_arg=s then additionally wc_arg=0 required) Default 0.";
 }
 
+static size_t did_gc = 0;
+static size_t prev_size = 0;
+static int terminate_reordering = 0;
+
+VOID_TASK_0(gc_start)
+{
+    did_gc = 1;
+    size_t used, total;
+    sylvan::sylvan_table_usage(&used, &total);
+    std::cout << "Sylvan:GC: start:    " << used << "/" << total << " size" << std::endl;
+}
+
+VOID_TASK_0(gc_end)
+{
+    size_t used, total;
+    sylvan_table_usage(&used, &total);
+    std::cout << "Sylvan:GC: end:    " << used << "/" << total << " size" << std::endl;
+}
+
+VOID_TASK_0(reordering_start)
+{
+    sylvan::sylvan_gc();
+    size_t size = llmsset_count_marked(sylvan::nodes);
+    std::cout << "Sylvan:RE: start:    " << size << " size" << std::endl;
+}
+
+VOID_TASK_0(reordering_progress)
+{
+    size_t size = llmsset_count_marked(sylvan::nodes);
+//    run at most until the size converges
+    if (prev_size <= size) terminate_reordering = 1;
+    else prev_size = size;
+    std::cout << "Sylvan:RE: progress: " << size << " size" << std::endl;
+}
+
+VOID_TASK_0(reordering_end)
+{
+    size_t size = llmsset_count_marked(sylvan::nodes);
+    std::cout << "Sylvan:RE: end:      " << size << " size" << std::endl;
+}
+
+int should_reordering_terminate()
+{
+    return terminate_reordering;
+}
+
 void OptionDict::runCommand() const {
   if (verboseSolving >= 1) {
     cout << "c processing command-line options...\n";
@@ -2027,6 +2077,19 @@ void OptionDict::runCommand() const {
       sylvan_set_limits(maxMem*MEGA, tableRatio, initRatio);
       sylvan_init_package();
       sylvan_init_mtbdd();
+      if(dynVarOrdering == 1){
+        sylvan_init_reorder();
+        sylvan_set_reorder_threshold(2);
+        sylvan_set_reorder_maxgrowth(1.2f);
+        sylvan_set_reorder_timelimit(1 * 60 * 1000); // 1 minute
+
+        sylvan_re_hook_prere(TASK(reordering_start));
+        sylvan_re_hook_progre(TASK(reordering_progress));
+        sylvan_re_hook_postre(TASK(reordering_end));
+
+        sylvan::sylvan_gc_hook_pregc(TASK(gc_start));
+        sylvan::sylvan_gc_hook_postgc(TASK(gc_end));
+      }
       // lace_init(threadCount, 0);
       // lace_startup(0, NULL, NULL);
       // sylvan::sylvan_set_limits(maxMem * MEGA, tableRatio, initRatio);

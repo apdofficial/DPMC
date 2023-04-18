@@ -1,0 +1,1 @@
+/usr/bin/c++  -g   @CMakeFiles/DPMC.dir/objects1.rsp @CMakeFiles/DPMC.dir/objects2.rsp  -o DPMC 

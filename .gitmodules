@@ -9,4 +9,4 @@
 	url = git@github.com:allrtaken/CUDD.git
 [submodule "addmc/libraries/sylvan"]
 	path = addmc/libraries/sylvan
-	url = git@github.com:allrtaken/sylvan.git
+	url = https://github.com/apdofficial/sylvan.git
