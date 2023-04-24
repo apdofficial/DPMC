@@ -1,3 +1,0 @@
-/tmp/DPMC/cmake-build-debug/CMakeFiles/rebuild_cache.dir
-/tmp/DPMC/cmake-build-debug/CMakeFiles/edit_cache.dir
-/tmp/DPMC/cmake-build-debug/CMakeFiles/DPMC.dir

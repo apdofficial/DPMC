@@ -1242,6 +1242,13 @@ Dd Executor::getClauseDd(const Map<Int, Int>& cnfVarToDdVarMap, const Clause& cl
 
 Dd Executor::solveSubtree(const JoinNode* joinNode, const Map<Int, Int>& cnfVarToDdVarMap, const vector<Int>& ddVarToCnfVarMap, const Cudd* mgr, const Assignment& assignment) {
    cout<<"Starting visit of joinNode number "<<joinNode->nodeIndex+1<<"\n";
+
+   size_t used, total;
+   sylvan::sylvan_table_usage_RUN(&used, &total);
+   if (used > total * 0.9) {
+        sylvan::Sylvan::reorderAll();
+   }
+
   if (joinNode->isTerminal()) {
     TimePoint terminalStartPoint = util::getTimePoint();
 
@@ -1957,20 +1964,20 @@ VOID_TASK_0(gc_start)
 {
     did_gc = 1;
     size_t used, total;
-    sylvan::sylvan_table_usage(&used, &total);
+    sylvan::sylvan_table_usage_RUN(&used, &total);
     std::cout << "Sylvan:GC: start:    " << used << "/" << total << " size" << std::endl;
 }
 
 VOID_TASK_0(gc_end)
 {
     size_t used, total;
-    sylvan_table_usage(&used, &total);
+    sylvan::sylvan_table_usage_RUN(&used, &total);
     std::cout << "Sylvan:GC: end:    " << used << "/" << total << " size" << std::endl;
 }
 
 VOID_TASK_0(reordering_start)
 {
-    sylvan::sylvan_gc();
+    sylvan::sylvan_gc_RUN();
     size_t size = llmsset_count_marked(sylvan::nodes);
     std::cout << "Sylvan:RE: start:    " << size << " size" << std::endl;
 }
@@ -2259,7 +2266,6 @@ OptionDict::OptionDict(int argc, char** argv) {
     randomSeed = result[RANDOM_SEED_OPTION].as<Int>(); // global var
     
     dynVarOrdering = result[DYN_ORDER_OPTION].as<Int>();
-    assert(dynVarOrdering == 0 || ddPackage == CUDD_PACKAGE);
 
     satFilter = result[SAT_FILTER_OPTION].as<Int>();
     assert(satFilter >= 0 && satFilter <=2);
