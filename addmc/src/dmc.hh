@@ -8,6 +8,7 @@
 #include "../libraries/cudd/cudd/cuddInt.h"
 
 #include "../libraries/sylvan/src/sylvan.h"
+#include "../libraries/sylvan/src/sylvan_int.h"
 #include "../libraries/sylvan/src/sylvan_gmp.h"
 #include "../libraries/sylvan/src/sylvan_obj.hpp"
 
