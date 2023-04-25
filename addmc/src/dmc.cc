@@ -1001,7 +1001,6 @@ Dd SatFilter::solveSubtree(const JoinNode* joinNode, const Map<Int, Int>& cnfVar
   }
 
   TimePoint nonterminalStartPoint = util::getTimePoint();
-
   // cout << "c 3\n";
   Dd prod = Dd::getOneBdd(mgr);
   
@@ -1241,7 +1240,7 @@ Dd Executor::getClauseDd(const Map<Int, Int>& cnfVarToDdVarMap, const Clause& cl
 }
 
 Dd Executor::solveSubtree(const JoinNode* joinNode, const Map<Int, Int>& cnfVarToDdVarMap, const vector<Int>& ddVarToCnfVarMap, const Cudd* mgr, const Assignment& assignment) {
-   cout<<"Starting visit of joinNode number "<<joinNode->nodeIndex+1<<"\n";
+//   cout<<"Starting visit of joinNode number "<<joinNode->nodeIndex+1<<"\n";
 
    size_t used, total;
    sylvan::sylvan_table_usage_RUN(&used, &total);
@@ -2079,16 +2078,19 @@ void OptionDict::runCommand() const {
     }
     const Cudd* mgr = 0;
     if (ddPackage == SYLVAN_PACKAGE) { // initializes Sylvan
-      lace_start(threadCount, 1000000); // auto-detect number of workers, use a 1,000,000 size task queue
+      lace_start(4, 1000000); // auto-detect number of workers, use a 1,000,000 size task queue
       // Init Sylvan  
       sylvan_set_limits(maxMem*MEGA, tableRatio, initRatio);
       sylvan_init_package();
       sylvan_init_mtbdd();
       if(dynVarOrdering == 1){
         sylvan_init_reorder();
-        sylvan_set_reorder_threshold(2);
+
+        sylvan_set_reorder_maxswap(5000);
+        sylvan_set_reorder_maxvar(50);
+        sylvan_set_reorder_threshold(128);
         sylvan_set_reorder_maxgrowth(1.2f);
-        sylvan_set_reorder_timelimit(1 * 60 * 1000); // 1 minute
+        sylvan_set_reorder_timelimit(1 * 30 * 1000);
 
         sylvan_re_hook_prere(TASK(reordering_start));
         sylvan_re_hook_progre(TASK(reordering_progress));
@@ -2097,11 +2099,6 @@ void OptionDict::runCommand() const {
         sylvan::sylvan_gc_hook_pregc(TASK(gc_start));
         sylvan::sylvan_gc_hook_postgc(TASK(gc_end));
       }
-      // lace_init(threadCount, 0);
-      // lace_startup(0, NULL, NULL);
-      // sylvan::sylvan_set_limits(maxMem * MEGA, tableRatio, initRatio);
-      // sylvan::sylvan_init_package();
-      // sylvan::sylvan_init_mtbdd();
       if (multiplePrecision) {
         sylvan::gmp_init();
       }
@@ -2266,6 +2263,7 @@ OptionDict::OptionDict(int argc, char** argv) {
     randomSeed = result[RANDOM_SEED_OPTION].as<Int>(); // global var
     
     dynVarOrdering = result[DYN_ORDER_OPTION].as<Int>();
+//    assert(dynVarOrdering == 0 || ddPackage == CUDD_PACKAGE);
 
     satFilter = result[SAT_FILTER_OPTION].as<Int>();
     assert(satFilter >= 0 && satFilter <=2);
