@@ -1,7 +1,5 @@
 #include "dmc.hh"
 #include "util/util.h"
-#include "sylvan_int.h"
-#include "sylvan_common.h"
 
 /* global vars ============================================================== */
 
@@ -1240,13 +1238,14 @@ Dd Executor::getClauseDd(const Map<Int, Int>& cnfVarToDdVarMap, const Clause& cl
 }
 
 Dd Executor::solveSubtree(const JoinNode* joinNode, const Map<Int, Int>& cnfVarToDdVarMap, const vector<Int>& ddVarToCnfVarMap, const Cudd* mgr, const Assignment& assignment) {
-//   cout<<"Starting visit of joinNode number "<<joinNode->nodeIndex+1<<"\n";
+  // cout<<"Starting visit of joinNode number "<<joinNode->nodeIndex+1<<"\n";
 
-   size_t used, total;
-   sylvan::sylvan_table_usage_RUN(&used, &total);
-   if (used > total * 0.9) {
-        sylvan::Sylvan::reorderAll();
-   }
+  size_t used, total;
+  sylvan::sylvan_table_usage_RUN(&used, &total);
+  // if the table is filled with more than x% data, start reordering
+  if (used > total * 0.90) {
+      sylvan::Sylvan::reduceHeap();
+  }
 
   if (joinNode->isTerminal()) {
     TimePoint terminalStartPoint = util::getTimePoint();
@@ -1284,9 +1283,9 @@ Dd Executor::solveSubtree(const JoinNode* joinNode, const Map<Int, Int>& cnfVarT
       // }
       childDdList.push_back(solveSubtree(child, cnfVarToDdVarMap, ddVarToCnfVarMap, mgr, assignment));
     }
-    
+
     // Dd dd = Dd::getOneDd(mgr);
-    
+
     if (joinPriority == ARBITRARY_PAIR) { // arbitrarily multiplies child decision diagrams
       for (Dd childDd : childDdList) {
         dd = dd.getProduct(childDd);
@@ -1310,7 +1309,7 @@ Dd Executor::solveSubtree(const JoinNode* joinNode, const Map<Int, Int>& cnfVarT
       dd = childDdQueue.top();
     }
   }
-  
+
   //nodeIndex is 0 index subtracting 1 to match with numbers in pjtree
   // if (((joinNode->nodeIndex >= 3681) && (joinNode->nodeIndex <= 3685)) || (joinNode->nodeIndex >= 3767)){
   //   cout<<"joinNode index:"<<joinNode->nodeIndex+1<<"\n";
@@ -1319,7 +1318,7 @@ Dd Executor::solveSubtree(const JoinNode* joinNode, const Map<Int, Int>& cnfVarT
   //     cout << r << " " << ddVarToCnfVarMap.at(r) << "\n";
   //   }
   // }
-  
+
   if (atomicAbstract){
   // if (false){
     // if (false){
@@ -1369,7 +1368,7 @@ void Executor::solveThreadSlices(const JoinNonterminal* joinRoot, const Map<Int,
   const vector<Assignment>& threadAssignments = threadAssignmentLists.at(threadIndex);
   for (Int threadAssignmentIndex = 0; threadAssignmentIndex < threadAssignments.size(); threadAssignmentIndex++) {
     TimePoint sliceStartPoint = util::getTimePoint();
-    
+
     const Cudd* mgr = Dd::newMgr(threadMem, threadIndex);
     if(dynVarOrdering == 1){
       Dd::enableDynamicOrdering(mgr);
@@ -1765,6 +1764,7 @@ Executor::Executor(const JoinNonterminal* joinRoot, Int ddVarOrderHeuristic, Int
   //     ddVarToCnfVarMap
   //   ).extractConst();
   // } else{
+    sylvan::mtbdd_newlevels(ddVarToCnfVarMap.size());
     Dd res = solveSubtree(static_cast<const JoinNode*>(joinRoot), cnfVarToDdVarMap, ddVarToCnfVarMap, mgr);
     cout << "Size of map is "<<ddVarToCnfVarMap.size()<<" Support ddvar cnfvar is\n";
     for (auto& r : res.getSupport()){
@@ -1955,45 +1955,29 @@ string OptionDict::helpAtomicAbstract() {
   return "0/1 - Disable/Enable single step abstraction operation. (to enable, er_arg=0 pc_arg=0 dp_arg=c or if dp_arg=s then additionally wc_arg=0 required) Default 0.";
 }
 
-static size_t did_gc = 0;
 static size_t prev_size = 0;
 static int terminate_reordering = 0;
-
-VOID_TASK_0(gc_start)
-{
-    did_gc = 1;
-    size_t used, total;
-    sylvan::sylvan_table_usage_RUN(&used, &total);
-    std::cout << "Sylvan:GC: start:    " << used << "/" << total << " size" << std::endl;
-}
-
-VOID_TASK_0(gc_end)
-{
-    size_t used, total;
-    sylvan::sylvan_table_usage_RUN(&used, &total);
-    std::cout << "Sylvan:GC: end:    " << used << "/" << total << " size" << std::endl;
-}
 
 VOID_TASK_0(reordering_start)
 {
     sylvan::sylvan_gc_RUN();
     size_t size = llmsset_count_marked(sylvan::nodes);
-    std::cout << "Sylvan:RE: start:    " << size << " size" << std::endl;
+    std::cout << "Sylvan:RE: start:    " << size << " size\n";
 }
 
 VOID_TASK_0(reordering_progress)
 {
     size_t size = llmsset_count_marked(sylvan::nodes);
-//    run at most until the size converges
-    if (prev_size <= size) terminate_reordering = 1;
+    // we need at least 4% reduction in size to continue
+    if (size >= prev_size * 0.96) terminate_reordering = 1;
     else prev_size = size;
-    std::cout << "Sylvan:RE: progress: " << size << " size" << std::endl;
+    std::cout << "Sylvan:RE: progress: " << size << " size\n";
 }
 
 VOID_TASK_0(reordering_end)
 {
     size_t size = llmsset_count_marked(sylvan::nodes);
-    std::cout << "Sylvan:RE: end:      " << size << " size" << std::endl;
+    std::cout << "Sylvan:RE: end:      " << size << " size\n";
 }
 
 int should_reordering_terminate()
@@ -2079,11 +2063,11 @@ void OptionDict::runCommand() const {
     const Cudd* mgr = 0;
     if (ddPackage == SYLVAN_PACKAGE) { // initializes Sylvan
       lace_start(4, 1000000); // auto-detect number of workers, use a 1,000,000 size task queue
-      // Init Sylvan  
-      sylvan_set_limits(maxMem*MEGA, tableRatio, initRatio);
+      // Init Sylvan
+      sylvan_set_limits((maxMem-5000)*MEGA , tableRatio, initRatio);
       sylvan_init_package();
       sylvan_init_mtbdd();
-      if(dynVarOrdering == 1){
+      // if(dynVarOrdering == 1){
         sylvan_init_reorder();
 
         sylvan_set_reorder_maxswap(5000);
@@ -2095,10 +2079,7 @@ void OptionDict::runCommand() const {
         sylvan_re_hook_prere(TASK(reordering_start));
         sylvan_re_hook_progre(TASK(reordering_progress));
         sylvan_re_hook_postre(TASK(reordering_end));
-
-        sylvan::sylvan_gc_hook_pregc(TASK(gc_start));
-        sylvan::sylvan_gc_hook_postgc(TASK(gc_end));
-      }
+      // }
       if (multiplePrecision) {
         sylvan::gmp_init();
       }
