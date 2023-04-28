@@ -1243,7 +1243,7 @@ Dd Executor::solveSubtree(const JoinNode* joinNode, const Map<Int, Int>& cnfVarT
   size_t used, total;
   sylvan::sylvan_table_usage_RUN(&used, &total);
   // if the table is filled with more than x% data, start reordering
-  if (used > total * 0.90) {
+  if (used > total * 0.75) {
       sylvan::Sylvan::reduceHeap();
   }
 
@@ -1962,7 +1962,7 @@ VOID_TASK_0(reordering_start)
 {
     sylvan::sylvan_gc_RUN();
     size_t size = llmsset_count_marked(sylvan::nodes);
-    std::cout << "Sylvan:RE: start:    " << size << " size\n";
+    std::cout << "\nSylvan:RE: start:    " << size << " size\n";
 }
 
 VOID_TASK_0(reordering_progress)
@@ -1976,6 +1976,7 @@ VOID_TASK_0(reordering_progress)
 
 VOID_TASK_0(reordering_end)
 {
+    sylvan::sylvan_gc_RUN();
     size_t size = llmsset_count_marked(sylvan::nodes);
     std::cout << "Sylvan:RE: end:      " << size << " size\n";
 }
@@ -2074,7 +2075,7 @@ void OptionDict::runCommand() const {
         sylvan_set_reorder_maxvar(50);
         sylvan_set_reorder_threshold(128);
         sylvan_set_reorder_maxgrowth(1.2f);
-        sylvan_set_reorder_timelimit(1 * 30 * 1000);
+        sylvan_set_reorder_timelimit(1 * 60 * 1000);
 
         sylvan_re_hook_prere(TASK(reordering_start));
         sylvan_re_hook_progre(TASK(reordering_progress));
