@@ -2064,10 +2064,10 @@ void OptionDict::runCommand() const {
     if (ddPackage == SYLVAN_PACKAGE) { // initializes Sylvan
       lace_start(4, 1000000); // auto-detect number of workers, use a 1,000,000 size task queue
       // Init Sylvan
-      sylvan_set_limits((maxMem-5000)*MEGA , tableRatio, initRatio);
+      sylvan_set_limits(maxMem*MEGA , tableRatio, initRatio);
       sylvan_init_package();
       sylvan_init_mtbdd();
-      // if(dynVarOrdering == 1){
+      if(dynVarOrdering == 1){
         sylvan_init_reorder();
 
         sylvan_set_reorder_maxswap(5000);
@@ -2079,7 +2079,7 @@ void OptionDict::runCommand() const {
         sylvan_re_hook_prere(TASK(reordering_start));
         sylvan_re_hook_progre(TASK(reordering_progress));
         sylvan_re_hook_postre(TASK(reordering_end));
-      // }
+      }
       if (multiplePrecision) {
         sylvan::gmp_init();
       }
