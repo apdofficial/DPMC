@@ -89,8 +89,8 @@ namespace io{
   void printAdjustedSolutionRows(const Number& adjustedSolution, bool satSolverPruning, bool logCounting, 
       bool weightedCounting, bool multiplePrecision, bool existRandom, bool projectedCounting, bool unsatFlag=false, size_t keyWidth=0);
   void printAssignmentString(string s);
-  void printLine(string s);
-  void printLine(char* s);
+  void printLine(string s, string e="\n");
+  void printLine(char* s, char* e="\n");
   void printLine();
 } //namespace io
 } //namespace dpve

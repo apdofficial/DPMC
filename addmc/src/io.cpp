@@ -358,12 +358,12 @@ void dpve::io::printLine(){
   cout << "\n";
 }
 
-void dpve::io::printLine(string s){
-  cout << "c c "<<s<<std::endl<<std::flush;
+void dpve::io::printLine(string s, string e){
+  cout << "c c "<<s<<e<<std::flush;
 }
 
-void dpve::io::printLine(char *s){
-  cout << "c c "<<s<<std::endl<<std::flush;
+void dpve::io::printLine(char *s, char* e){
+  cout << "c c "<<s<<e<<std::flush;
 }
 
 PruneMaxParams::PruneMaxParams(const Float logBound, const Int maximizerFormat, const bool maximizerVerification, 

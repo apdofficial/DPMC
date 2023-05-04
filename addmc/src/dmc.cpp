@@ -326,8 +326,6 @@ Number Dpve::getMaximizerValue(const Assignment& maximizer) {
   return getAdjustedSolution(solution);
 }
 
-
-
 Executor::Executor(const Cnf& cnf, const Map<Int, Int>& cnfVarToDdVarMap, const vector<Int>& ddVarToCnfVarMap,
       const bool existRandom, const string joinPriority, const Int satFilter, const Int verboseSolving, const Int verboseProfiling): 
     cnf(cnf),
@@ -346,7 +344,8 @@ Executor::Executor(const Cnf& cnf, const Map<Int, Int>& cnfVarToDdVarMap, const 
 Dpve::Dpve(const io::InputParams& p_):p(p_){
   //construct join tree
   //compute var order
-  Dd::init(p.ddPackage,p.logCounting,p.atomicAbstract, p.weightedCounting, p.multiplePrecision,p.tableRatio,p.initRatio,p.threadCount,p.maxMem,p.dynVarOrdering,0);
+  Dd::init(p.ddPackage,p.logCounting,p.atomicAbstract, p.weightedCounting, p.multiplePrecision,p.tableRatio,p.initRatio,
+    p.threadCount,p.maxMem,p.dynVarOrdering,0);
 }
 
 Dpve::~Dpve(){

@@ -90,7 +90,8 @@ public:
   static bool disableDynamicOrdering();
   static int postReorderHook(DdManager* dd, const char *str, void *data);
   static int preReorderHook(DdManager* dd, const char *str, void *data);
-
+  static int postGCHook(DdManager *dd, const char *str, void *data);
+  static int preGCHook(DdManager *dd, const char *str, void *data);
   
   static Dd getZeroBdd(); // returns minus infinity if logCounting
   static Dd getOneBdd(); // returns zero if logCounting

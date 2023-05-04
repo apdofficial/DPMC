@@ -45,6 +45,16 @@ bool Dd::disableDynamicOrdering() {
   return (Dd::dynOrderEnabled);
 }
 
+int Dd::postGCHook(DdManager *dd, const char *str, void *data){
+  printLine("GC done!");
+  return 1;
+}
+
+int Dd::preGCHook(DdManager *dd, const char *str, void *data){
+  printLine("Starting GC..","   ");
+  return 1;
+}
+
 int Dd::postReorderHook(DdManager *dd, const char *str, void *data){
     unsigned long initialTime = (unsigned long) (ptruint) data;
     int retval;
@@ -385,6 +395,10 @@ static bool isApproximatelyEqual(TReal a, TReal b, TReal tolerance = std::numeri
     return false;
 }
 
+/*
+Does not convert weights to logscale regardless of status of logCounting flag
+Callers responsibility to convert as necessary.
+*/
 Float Dd::getNegWt(Int ddVar){
   assert (ddVar>=0);
   auto [posWt, negWt] = wtMap[ddVar];
@@ -392,11 +406,12 @@ Float Dd::getNegWt(Int ddVar){
     assert (posWt == 1);
   } else{
     if (!isApproximatelyEqual(negWt + posWt,1.0l,0.001l)){
-      printLine("Sum not to 1!! :"+to_string(ddVar)+"  "+to_string(posWt)+":"+to_string(negWt));
+      printLine("literal weights not summing to 1!! :"+to_string(ddVar)+"  "+to_string(posWt)+":"+to_string(negWt));
       exit(1);
     }
   }
-  return logCounting ? log10l(negWt) : negWt;
+  // return logCounting ? log10l(negWt) : negWt;
+  return negWt;
 }
 
 Dd Dd::getAbstraction(Map<Int,tuple<Float,Float,bool,Int>> ddVarWts, Float logBound, vector<pair<Int, Dd>>& maximizationStack, bool maximizerFormat, bool substitutionMaximization, Int verboseSolving){
@@ -623,6 +638,9 @@ void Dd::init(string ddPackage_, bool logCounting_, bool atomicAbstract_, bool w
     if (dynVarOrdering){
       enableDynamicOrdering();
     }
+    mgr->AddHook(postGCHook, CUDD_POST_GC_HOOK);
+    mgr->AddHook(preGCHook, CUDD_PRE_GC_HOOK);
+    printLine("CUDD Max Mem: "+to_string(mgr->ReadMaxMemory()));
   } else{
     lace_start(threadCount, 1000000); // auto-detect number of workers, use a 1,000,000 size task queue
     // Init Sylvan  
@@ -639,5 +657,10 @@ void Dd::stop(){
   if (ddPackage == SYLVAN_PACKAGE) { // quits Sylvan
     sylvan::sylvan_quit();
     lace_stop();
+  }else{
+    printLine("Current CUDD used Mem: "+to_string(mgr->ReadMemoryInUse()));
+    printLine("Total GC time: "+to_string(mgr->ReadGarbageCollectionTime()));
+    mgr->info();
+    Cudd_Quit(mgr->getManager());
   }
 }
