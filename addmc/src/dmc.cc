@@ -395,28 +395,28 @@ bool Dd::disableDynamicOrdering(const Cudd* mgr) {
 }
 
 int Dd::postReorderHook(DdManager *dd, const char *str, void *data){
-    //TODO: 
+    //TODO:
     //read new var order from manager using cudd_readperm and cudd_readinvperm
     //    https://add-lib.scce.info/assets/doxygen-cudd-documentation/cuddAPI_8c.html#aacfa59899b792c9f47a612ceba42c976
     //    https://add-lib.scce.info/assets/doxygen-cudd-documentation/cuddAPI_8c.html#ae16ce73ed2e5afcd0dd1c1db43884d2a
-    //    say int perm[] holds the permutation of vars from 1..n read using perm[i] = Cudd_ReadPerm(dd, i) 
+    //    say int perm[] holds the permutation of vars from 1..n read using perm[i] = Cudd_ReadPerm(dd, i)
     //    i.e. perm[i] = j means that the position of ith variable in the new order is j
     //
     // uint64_t nVars = JoinNode::cnf.apparentVars.size();
     // for (uint64_t i=0; i<nVars; i++){
     //   Cudd_ReadPerm(dd,i);
-    // }     
-    
+    // }
+
     //make sure cnfVartoDDVar and ddVarToCNFVar maps are public static members of Executor class
     // update those maps using new var order.
     //    for i 1...n
     //        set cnfVarToDDVarMap[i] = perm[cnfVarToDDVarMap[i]]
     //        set ddVarToCnFVarmap[perm[cnfVarToDDVarMap[i]]] = i
-              //where perm is as calculated in previous step    
+              //where perm is as calculated in previous step
     // use Cudd_AddHook or mgr->AddHook to add this function as a hook. (added in enableDynamicOrdering)
     //    https://add-lib.scce.info/assets/doxygen-cudd-documentation/cuddAPI_8c.html#a6884f064de544463f006f9104e4afa74
     //optionally additionally make Cudd* mgr a static member of Dd class
-    
+
     unsigned long initialTime = (unsigned long) (ptruint) data;
     int retval;
     unsigned long finalTime = util_cpu_time();
@@ -503,7 +503,6 @@ int Dd::preReorderHook(DdManager *dd, const char *str, void *data){
 
 } /* end of Cudd_StdPreReordHook */
 
-
 size_t Dd::getLeafCount() const {
   if (ddPackage == CUDD_PACKAGE) {
     return cuadd.CountLeaves();
@@ -554,7 +553,7 @@ Number Dd::extractConst() const {
     assert(minTerminal == cuadd.FindMax());
     return Number(cuddV(minTerminal.getNode()));
   }
-  assert(mtbdd.isLeaf());
+  // assert(mtbdd.isLeaf());
   if (multiplePrecision) {
     uint64_t val = mtbdd_getvalue(mtbdd.GetMTBDD());
     return Number(mpq_class(reinterpret_cast<mpq_ptr>(val)));
@@ -632,7 +631,7 @@ Dd Dd::getVarBdd(Int ddVar, bool val, const Cudd* mgr) {
     BDD d = mgr->bddVar(ddVar);
     return val ? Dd(d) : Dd(!d);
   } else {
-    return val? Bdd::bddVar(ddVar) : !Bdd::bddVar(ddVar); 
+    return val? Bdd::bddVar(ddVar) : !Bdd::bddVar(ddVar);
   }
 }
 
@@ -678,7 +677,7 @@ Set<Int> Dd::getBddSupport() const{
     for (Int ddVar : cubdd.SupportIndices()) {
       support.insert(ddVar);
     }
-   
+
   }
   else {
     Mtbdd cube = sybdd.Support(); // conjunction of all vars appearing in mtbdd
@@ -762,7 +761,7 @@ Dd Dd::getAddSumAbstract(const Set<Int>& cnfVars, const Map<Int,Int>& cnfVarToDd
       //       assert (literalWeights.at(cnfVar).fraction==1);
       //       negWt = 0;
       //     }
-      //     cout<<ddVar<<":"<<negWt<<"  "<<literalWeights.at(-cnfVar).fraction<<":"<<literalWeights.at(cnfVar).fraction<<"\n"; 
+      //     cout<<ddVar<<":"<<negWt<<"  "<<literalWeights.at(-cnfVar).fraction<<":"<<literalWeights.at(cnfVar).fraction<<"\n";
       //   }
       //   wCube = v.Ite(wCube,mgr->constant(negWt));
       }
@@ -785,7 +784,7 @@ Dd Dd::getAddSumAbstract(const Set<Int>& cnfVars, const Map<Int,Int>& cnfVarToDd
       b.add((uint32_t)v);
     }
     return logCounting? mtbdd.AbstractLogSumExp(b) : mtbdd.AbstractPlus(b);
-    
+
   }
 }
 
@@ -990,7 +989,7 @@ Dd SatFilter::getClauseBdd(const Map<Int, Int>& cnfVarToDdVarMap, const Clause& 
 Dd SatFilter::solveSubtree(const JoinNode* joinNode, const Map<Int, Int>& cnfVarToDdVarMap, const vector<Int>& ddVarToCnfVarMap, const Cudd* mgr) {
   if (joinNode->isTerminal()) {
     TimePoint terminalStartPoint = util::getTimePoint();
-    // cout << "c 1\n";
+    cout << "c 1\n";
     Dd d = getClauseBdd(cnfVarToDdVarMap, JoinNode::cnf.clauses.at(joinNode->nodeIndex), mgr);
     ((JoinNode*) joinNode)->dd = (void*) new Dd(Dd::getOneBdd(mgr)); //cast away const-ness of joinNode to modify dd. Should be fine since object itself is not const
     joinNodesProcessed ++;
@@ -999,13 +998,13 @@ Dd SatFilter::solveSubtree(const JoinNode* joinNode, const Map<Int, Int>& cnfVar
   }
 
   TimePoint nonterminalStartPoint = util::getTimePoint();
-  // cout << "c 3\n";
+  cout << "c 3\n";
   Dd prod = Dd::getOneBdd(mgr);
-  
+
   if (joinPriority == FCFS){
     for (JoinNode* child : joinNode->children) {
       prod = prod.getBddAnd(solveSubtree(child, cnfVarToDdVarMap, ddVarToCnfVarMap, mgr));
-    }  
+    }
   } else {
     vector<Dd> childDdList;
     for (JoinNode* child : joinNode->children) {
@@ -1052,10 +1051,10 @@ Dd SatFilter::solveSubtree(const JoinNode* joinNode, const Map<Int, Int>& cnfVar
   if (joinNode->projectionVars.size()>0){
     ((JoinNode*) joinNode)->dd = (void*) new Dd(prod); //to make sure it does not go out of scope since we are storing a pointer
     //cast away const-ness of joinNode to modify dd. Should be fine since object itself is not const
-    
+
     // Dd* d = new Dd(dd); // to make sure it does not go out of scope since we are storing a pointer
     // ((JoinNode*) joinNode)->dd = (void*) d; //cast away const-ness of joinNode to modify dd. Should be fine since object itself is not const
-    
+
     vector<Int> ddVars;
     for (Int cnfVar : joinNode->projectionVars) {
       ddVars.push_back(cnfVarToDdVarMap.at(cnfVar));
@@ -1088,7 +1087,7 @@ bool SatFilter::solveCnf(const JoinNonterminal* joinRoot, const Map<Int, Int>& c
 bool SatFilter::filterBdds(const JoinNode* joinNode, const Map<Int, Int>& cnfVarToDdVarMap, const vector<Int>& ddVarToCnfVarMap, Dd parentBdd, const Cudd* mgr){
   Dd* d = (Dd*)joinNode->dd;
   bool hasNewClsDescendents = false;
-  bool bottomMost = true; //joinnode with projvars.size>0 and at least one jointerminal descendant. 
+  bool bottomMost = true; //joinnode with projvars.size>0 and at least one jointerminal descendant.
   //joinnode->dd should not be set to one if true, as it will be used by executor.
   if (joinNode->isTerminal()){
     hasNewClsDescendents = true;
@@ -1098,7 +1097,7 @@ bool SatFilter::filterBdds(const JoinNode* joinNode, const Map<Int, Int>& cnfVar
     bottomMost = false;
   } else{
     *(Dd*)(((JoinNode*) joinNode)->dd) = d->getFilteredBdd(parentBdd, mgr);
-    assert(d == (Dd*)joinNode->dd); 
+    assert(d == (Dd*)joinNode->dd);
     bottomMost = true;
     hasNewClsDescendents = false;
   }
@@ -1130,7 +1129,7 @@ SatFilter::SatFilter(const JoinNonterminal* joinRoot, Int ddVarOrderHeuristic, c
     cout << "c Formula is UNSAT. Exiting..\n";
     exit(1);
   }
-  SatFilter::joinNodesProcessed = 0; 
+  SatFilter::joinNodesProcessed = 0;
   cout << "c Done constructing SatFilter. Applying SatFilter...\n";
   SatFilter::satFilterStartPoint = util::getTimePoint();
   filterBdds(joinRoot,cnfVarToDdVarMap,ddVarToCnfVarMap,Dd::getOneBdd(mgr),mgr);
@@ -1240,18 +1239,19 @@ Dd Executor::getClauseDd(const Map<Int, Int>& cnfVarToDdVarMap, const Clause& cl
 Dd Executor::solveSubtree(const JoinNode* joinNode, const Map<Int, Int>& cnfVarToDdVarMap, const vector<Int>& ddVarToCnfVarMap, const Cudd* mgr, const Assignment& assignment) {
   // cout<<"Starting visit of joinNode number "<<joinNode->nodeIndex+1<<"\n";
 
-  size_t used, total;
-  sylvan::sylvan_table_usage_RUN(&used, &total);
-  // if the table is filled with more than x% data, start reordering
-  if (used > total * 0.75) {
-      sylvan::Sylvan::reduceHeap();
-  }
-
   if (joinNode->isTerminal()) {
+    size_t used, total;
+    sylvan::sylvan_table_usage_RUN(&used, &total);
+    // if the table is filled with more than x% data, start reordering
+    if (used > total * 0.987) {
+      sylvan::Sylvan::reduceHeap();
+    }
     TimePoint terminalStartPoint = util::getTimePoint();
 
     joinNodesProcessed ++;
-    if (((joinNodesProcessed-1)%(std::max((JoinNode::nodeCount/10),1LL)))==1) cout<<to_string(joinNodesProcessed)+"/"+to_string(JoinNode::nodeCount)+":"+to_string(util::getDuration(executorStartPoint))+" "<<std::flush;
+    if (((joinNodesProcessed-1)%(std::max((JoinNode::nodeCount/10),1LL)))==1) {
+      cout<<to_string(joinNodesProcessed)+"/"+to_string(JoinNode::nodeCount)+":"+to_string(util::getDuration(executorStartPoint))+" "<<std::flush;
+    }
     return satFilter>0? ((Dd*)joinNode->dd)->getAdd() : getClauseDd(cnfVarToDdVarMap, JoinNode::cnf.clauses.at(joinNode->nodeIndex), mgr, assignment);
     // if(satFilter>0){
     //   return Dd::getOneDd(mgr);
@@ -1262,6 +1262,8 @@ Dd Executor::solveSubtree(const JoinNode* joinNode, const Map<Int, Int>& cnfVarT
     // updateVarDurations(joinNode, terminalStartPoint);
     // updateVarDdSizes(joinNode, *d);
   }
+
+
 
   TimePoint nonterminalStartPoint = util::getTimePoint();
   Dd dd = satFilter>0? ((Dd*)joinNode->dd)->getAdd() : Dd::getOneDd(mgr);
@@ -1319,9 +1321,8 @@ Dd Executor::solveSubtree(const JoinNode* joinNode, const Map<Int, Int>& cnfVarT
   //   }
   // }
 
+
   if (atomicAbstract){
-  // if (false){
-    // if (false){
     dd = dd.getAddSumAbstract(joinNode->projectionVars,cnfVarToDdVarMap, JoinNode::cnf.literalWeights, mgr);
     const Set<Int> sup = dd.getSupport();
     for (auto& cnfVar:joinNode->projectionVars){
@@ -1329,38 +1330,41 @@ Dd Executor::solveSubtree(const JoinNode* joinNode, const Map<Int, Int>& cnfVarT
       assert (!sup.contains(ddVar));
     }
   } else{
+    for (Int cnfVar : joinNode->projectionVars) {
+      Int ddVar = cnfVarToDdVarMap.at(cnfVar);
 
-  for (Int cnfVar : joinNode->projectionVars) {
-    Int ddVar = cnfVarToDdVarMap.at(cnfVar);
+      bool additiveFlag = JoinNode::cnf.outerVars.contains(cnfVar);
+      if (existRandom) {
+        additiveFlag = !additiveFlag;
+      }
 
-    bool additiveFlag = JoinNode::cnf.outerVars.contains(cnfVar);
-    if (existRandom) {
-      additiveFlag = !additiveFlag;
-    }
+      dd = dd.getAbstraction(ddVar, ddVarToCnfVarMap, JoinNode::cnf.literalWeights, assignment, additiveFlag, maximizationStack, mgr);
 
-    dd = dd.getAbstraction(ddVar, ddVarToCnfVarMap, JoinNode::cnf.literalWeights, assignment, additiveFlag, maximizationStack, mgr);
+      if (logBound > -INF) {
+        if (JoinNode::cnf.literalWeights.at(cnfVar) != Number(1) || JoinNode::cnf.literalWeights.at(-cnfVar) != Number(1)) {
+          Dd prunedDd = dd.getPrunedDd(logBound, mgr);
+          if (prunedDd != dd) {
+            if (verboseSolving >= 3) {
+              cout << "c writing pre-pruning decision diagram...\n";
+              dd.writeDotFile(mgr);
 
-    if (logBound > -INF) {
-      if (JoinNode::cnf.literalWeights.at(cnfVar) != Number(1) || JoinNode::cnf.literalWeights.at(-cnfVar) != Number(1)) {
-        Dd prunedDd = dd.getPrunedDd(logBound, mgr);
-        if (prunedDd != dd) {
-          if (verboseSolving >= 3) {
-            cout << "c writing pre-pruning decision diagram...\n";
-            dd.writeDotFile(mgr);
-
-            cout << "c writing post-pruning decision diagram...\n";
-            prunedDd.writeDotFile(mgr);
+              cout << "c writing post-pruning decision diagram...\n";
+              prunedDd.writeDotFile(mgr);
+            }
+            dd = prunedDd;
           }
-          dd = prunedDd;
         }
       }
     }
   }
-  }
+
   updateVarDurations(joinNode, nonterminalStartPoint);
   updateVarDdSizes(joinNode, dd);
-  joinNodesProcessed ++;
-  if (((joinNodesProcessed-1)%(std::max((JoinNode::nodeCount/10),1LL)))==1) cout<<to_string(joinNodesProcessed)+"/"+to_string(JoinNode::nodeCount)+":"+to_string(util::getDuration(executorStartPoint))+" "<<std::flush;
+  joinNodesProcessed++;
+  if (((joinNodesProcessed-1)%(std::max((JoinNode::nodeCount/10),1LL)))==1) {
+    cout<<to_string(joinNodesProcessed)+"/"+to_string(JoinNode::nodeCount)+":"+to_string(util::getDuration(executorStartPoint))+" "<<std::flush;
+  }
+
   return dd;
 }
 
@@ -1737,7 +1741,6 @@ Number Executor::verifyMaximizer(
 
 Executor::Executor(const JoinNonterminal* joinRoot, Int ddVarOrderHeuristic, Int sliceVarOrderHeuristic, const Cudd* mgr, const Map<Int, Int>& cnfVarToDdVarMap,
     const vector<Int>& ddVarToCnfVarMap) {
-  cout << "\n";
   cout << "c computing output...\n";
   cout << "c joinRoot Index: "<<joinRoot->nodeIndex+1<<"\n";
   // TimePoint ddVarOrderStartPoint = util::getTimePoint();
@@ -1968,8 +1971,8 @@ VOID_TASK_0(reordering_start)
 VOID_TASK_0(reordering_progress)
 {
     size_t size = llmsset_count_marked(sylvan::nodes);
-    // we need at least 4% reduction in size to continue
-    if (size >= prev_size * 0.96) terminate_reordering = 1;
+    // we need at least 40% reduction in size to continue
+    if (size >= prev_size * 0.60) terminate_reordering = 1;
     else prev_size = size;
     std::cout << "Sylvan:RE: progress: " << size << " size\n";
 }
@@ -2071,9 +2074,9 @@ void OptionDict::runCommand() const {
       if(dynVarOrdering == 1){
         sylvan_init_reorder();
 
-        sylvan_set_reorder_maxswap(5000);
+        sylvan_set_reorder_maxswap(500);
         sylvan_set_reorder_maxvar(50);
-        sylvan_set_reorder_threshold(128);
+        sylvan_set_reorder_threshold(256);
         sylvan_set_reorder_maxgrowth(1.2f);
         sylvan_set_reorder_timelimit(1 * 60 * 1000);
 
@@ -2110,14 +2113,14 @@ void OptionDict::runCommand() const {
     // for (auto& i : ddVarToCnfVarMap){
     //   cout<< i << "\n";
     // }
-    cout << "num apparent vars: " << JoinNode::cnf.apparentVars.size() << "\n";
+    cout << "c num apparent vars: " << JoinNode::cnf.apparentVars.size() << "\n";
     if (satFilter > 0){
       SatFilter satfilter(joinRoot, ddVarOrderHeuristic, mgr, cnfVarToDdVarMap, ddVarToCnfVarMap);
     }
     if (satFilter != 1) {
       Executor executor(joinRoot, ddVarOrderHeuristic, sliceVarOrderHeuristic, mgr, cnfVarToDdVarMap, ddVarToCnfVarMap);
     }
-    
+
     if (ddPackage == SYLVAN_PACKAGE) { // quits Sylvan
       sylvan::sylvan_quit();
       lace_stop();
@@ -2243,7 +2246,7 @@ OptionDict::OptionDict(int argc, char** argv) {
     assert(threadSliceCount == 1 || ddPackage == CUDD_PACKAGE);
 
     randomSeed = result[RANDOM_SEED_OPTION].as<Int>(); // global var
-    
+
     dynVarOrdering = result[DYN_ORDER_OPTION].as<Int>();
 //    assert(dynVarOrdering == 0 || ddPackage == CUDD_PACKAGE);
 
@@ -2251,7 +2254,7 @@ OptionDict::OptionDict(int argc, char** argv) {
     assert(satFilter >= 0 && satFilter <=2);
 
     atomicAbstract = result[ATOMIC_ABSTRACT_OPTION].as<Int>();
-    assert((atomicAbstract == false) || (projectedCounting == false && existRandom == false && ddPackage == CUDD_PACKAGE) || 
+    assert((atomicAbstract == false) || (projectedCounting == false && existRandom == false && ddPackage == CUDD_PACKAGE) ||
       (projectedCounting == false && existRandom == false && weightedCounting == false && ddPackage == SYLVAN_PACKAGE));
 
     ddVarOrderHeuristic = result[DD_VAR_OPTION].as<Int>();
