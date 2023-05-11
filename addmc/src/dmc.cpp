@@ -75,6 +75,7 @@ Dd SatFilter::solveSubtree(const JoinNode* joinNode) {
         childDdQueue.push(childDd);
       }
       assert(!childDdQueue.empty());
+      Dd::manualReorder();
       while (childDdQueue.size() >= 2) {
         Dd dd1 = childDdQueue.top();
         childDdQueue.pop();
@@ -194,6 +195,23 @@ Dd Executor::solveSubtree(const JoinNode* joinNode, const PruneMaxParams& pmPara
       childDdList.push_back(solveSubtree(child, pmParams, assignment));
     }
     
+    //Following call considers reordering if enabled.
+    //Has internal checks to decide when to reorder
+    Dd::manualReorder(levelMaps);
+    /*
+    if (joinNodesProcessed>JoinNode::nodeCount*reOrdThresh){
+      reOrdThresh += 0.05;
+      
+      if(voInd == 0){
+        assert (ratio == 0);
+        printLine("No better order found. Order is unchanged!");
+      } else{
+        printLine("Better order found: "+CNF_VAR_ORDER_HEURISTICS.at(abs(voInd))+(voInd<0?" reversed": " unreverseed")+
+          " with size reduction ratio: "+to_string(ratio));
+      }
+    }
+    */
+
     if (joinPriority == ARBITRARY_PAIR) { // arbitrarily multiplies child decision diagrams
       for (Dd childDd : childDdList) {
         dd = dd.getProduct(childDd);
@@ -327,7 +345,8 @@ Number Dpve::getMaximizerValue(const Assignment& maximizer) {
 }
 
 Executor::Executor(const Cnf& cnf, const Map<Int, Int>& cnfVarToDdVarMap, const vector<Int>& ddVarToCnfVarMap,
-      const bool existRandom, const string joinPriority, const Int satFilter, const Int verboseSolving, const Int verboseProfiling): 
+      const bool existRandom, const string joinPriority, const Int satFilter, const Int verboseSolving, const Int verboseProfiling,
+      const Map<Int, vector<Int>> levelMaps_): 
     cnf(cnf),
     cnfVarToDdVarMap(cnfVarToDdVarMap),
     ddVarToCnfVarMap(ddVarToCnfVarMap),
@@ -335,16 +354,21 @@ Executor::Executor(const Cnf& cnf, const Map<Int, Int>& cnfVarToDdVarMap, const 
     joinPriority(joinPriority),
     satFilter(satFilter),
     verboseSolving(verboseSolving),
-    verboseProfiling(verboseProfiling)
+    verboseProfiling(verboseProfiling),
+    levelMaps(levelMaps_)
     {
       joinNodesProcessed = 0;
       executorStartPoint = util::getTimePoint();
     }
 
+void Dpve::reorder(){ 
+  // condition used by cudds internal sifting : mgr->keys - mgr->isolated; 
+}
+
 Dpve::Dpve(const io::InputParams& p_):p(p_){
   //construct join tree
   //compute var order
-  Dd::init(p.ddPackage,p.logCounting,p.atomicAbstract, p.weightedCounting, p.multiplePrecision,p.tableRatio,p.initRatio,
+  Dd::init(p.ddPackage,p.cnf.apparentVars.size(),p.logCounting,p.atomicAbstract, p.weightedCounting, p.multiplePrecision,p.tableRatio,p.initRatio,
     p.threadCount,p.maxMem,p.dynVarOrdering,0);
 }
 
@@ -381,14 +405,40 @@ pair<Number, Assignment> Dpve::computeSolution(){
   if (p.verboseSolving >= 1) {
     io::printRow("diagramVarSeconds", util::getDuration(ddVarOrderStartPoint));
   }
-
   Map<Int, Int> cnfVarToDdVarMap; // e.g. {42: 0, 13: 1}
   for (Int ddVar = 0; ddVar < ddVarToCnfVarMap.size(); ddVar++) {
     Int cnfVar = ddVarToCnfVarMap.at(ddVar);
     cnfVarToDdVarMap[cnfVar] = ddVar;
   }
-  cout<<cnfVarToDdVarMap.size()<<" "<<ddVarToCnfVarMap.size()<<"\n";
-  printLine();
+  if (p.dynVarOrdering == 1){
+    printLine("Computing all reordering var orders.."," ");
+    TimePoint levelOrdersStartPoint = util::getTimePoint();
+    for (auto [v,s] : CNF_VAR_ORDER_HEURISTICS){
+      if (v == COLAMD_HEURISTIC || v == RANDOM_HEURISTIC || v == LEX_M_HEURISTIC){
+        continue;
+      }
+      printLine(s," ");
+      auto vo = joinRoot->getVarOrder(v, p.cnf); // returns d2cMap. i.e. vo[ddVarIndex] = cnfVarIndex
+      //we will interpret vo as a reordering map. i.e. 
+      // ddVarIndex will now be ddVarLevel since ddVarIndex for all variables will always be fixed
+      // i.e. vo[ddVarLevel] = cnfVarIndex
+      // i.e. cnfVarIndex must be put in the level specified by ddVarLevel
+      for (auto cnfVar : vo){
+        levelMaps[v].push_back(cnfVarToDdVarMap.at(cnfVar)); // so we find ddVarIndex of cnfVar using c2dMap and insert into levelmap.
+      }
+      //so levelMap[ddVarLevel] = ddVarIndex
+      
+      //Simiarly for -v
+      for (auto it = vo.end(); it--!=vo.begin();){
+        Int cnfVar = *it;
+        levelMaps[-v].push_back(cnfVarToDdVarMap.at(cnfVar));
+      }
+      //levelMap will be used as permutation for Cudd_ShuffleHeap(perm)
+      //"The i-th entry of the permutation array contains the index of the variable that should be brought to the i-th level."
+    }
+    io::printRow("allDiagramOrdersSeconds", util::getDuration(levelOrdersStartPoint));
+  }
+  
   if (p.satFilter>0){
     s = new SatFilter(p.cnf,cnfVarToDdVarMap,ddVarToCnfVarMap);
     printLine("Computing SatFilter ...");
@@ -403,7 +453,7 @@ pair<Number, Assignment> Dpve::computeSolution(){
   }
   if(p.satFilter!=1){
     printLine("Starting executor...");
-    e = new Executor(p.cnf,cnfVarToDdVarMap,ddVarToCnfVarMap,p.existRandom,p.joinPriority,p.satFilter,p.verboseSolving,p.verboseProfiling);
+    e = new Executor(p.cnf,cnfVarToDdVarMap,ddVarToCnfVarMap,p.existRandom,p.joinPriority,p.satFilter,p.verboseSolving,p.verboseProfiling, levelMaps);
     setLogBound();
 
     Dd res = e->solveSubtree(static_cast<const JoinNode*>(joinRoot), p.pmParams);

@@ -514,7 +514,8 @@ bool dpve::io::validateOptions(InputParams& p){
   assert(!p.pmParams.substitutionMaximization || !p.weightedCounting);
   assert(!p.pmParams.substitutionMaximization || p.pmParams.maximizerFormat);
   assert(p.threadCount > 0);
-  assert(p.dynVarOrdering == 0 || p.ddPackage == CUDD_PACKAGE);
+  // assert(p.dynVarOrdering == 0 || p.ddPackage == CUDD_PACKAGE); //Sylvan now supports some types of dynordering
+  assert(p.ddPackage == CUDD_PACKAGE || p.dynVarOrdering == 0 || p.dynVarOrdering == 2);
   assert(p.satFilter >= 0 && p.satFilter <=2);
   assert((p.atomicAbstract == false) || (p.projectedCounting == false && p.existRandom == false && p.ddPackage == CUDD_PACKAGE) || 
         (p.projectedCounting == false && p.existRandom == false && p.weightedCounting == false && p.ddPackage == SYLVAN_PACKAGE));

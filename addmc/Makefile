@@ -14,7 +14,7 @@ CUDD_TARGET = $(CUDD_LIB_DIR)/libcudd.a
 CUDD_INCLUSIONS = -I$(CUDD_DIR) -I$(CUDD_DIR)/cudd -I$(CUDD_DIR)/epd -I$(CUDD_DIR)/mtr -I$(CUDD_DIR)/st
 CUDD_LINKS = -L$(CUDD_LIB_DIR) -lcudd
 
-SYLVAN_DIR = libraries/sylvan
+SYLVAN_DIR = libraries/sylvan-develop/
 SYLVAN_BUILD_DIR = $(SYLVAN_DIR)/build
 SYLVAN_LIB_DIR = $(SYLVAN_BUILD_DIR)/src
 SYLVAN_TARGET = $(SYLVAN_LIB_DIR)/libsylvan.a

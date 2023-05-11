@@ -19,6 +19,9 @@ size_t Dd::prunedDdCount;
 Float Dd::pruningDuration;
 
 bool Dd::dynOrderEnabled = false;
+Float Dd::reordThresh, Dd::reordThreshInc;
+Int Dd::maxSwaps, Dd::maxSwapsInc, Dd::dynVarOrdering = 0, Dd::lut;
+bool Dd::didReordering, Dd::noReordSinceGC; 
 
 string Dd::ddPackage;
 Cudd* Dd::mgr = 0;
@@ -47,6 +50,7 @@ bool Dd::disableDynamicOrdering() {
 
 int Dd::postGCHook(DdManager *dd, const char *str, void *data){
   printLine("GC done!");
+  noReordSinceGC = true;
   return 1;
 }
 
@@ -619,28 +623,206 @@ void Dd::writeInfoFile(const string& filePath) {
   printLine("wrote CUDD info to file "+filePath);
 }
 
+static size_t prev_size = 0;
+static int terminate_reordering = 0;
 
-void Dd::init(string ddPackage_, bool logCounting_, bool atomicAbstract_, bool weightedCounting_, bool multiplePrecision_, Int tableRatio, Int initRatio, Int threadCount, Float maxMem, bool dynVarOrdering, Int dotFileIndex_){
+VOID_TASK_0(reordering_start)
+{
+    sylvan::sylvan_gc_RUN();
+    size_t size = llmsset_count_marked(sylvan::nodes);
+    std::cout << "\nSylvan:RE: start:    " << size << " size\n";
+}
+
+VOID_TASK_0(reordering_progress)
+{
+    size_t size = llmsset_count_marked(sylvan::nodes);
+    // we need at least 40% reduction in size to continue
+    if (size >= prev_size * 0.60) terminate_reordering = 1;
+    else prev_size = size;
+    std::cout << "Sylvan:RE: progress: " << size << " size\n";
+}
+
+VOID_TASK_0(reordering_end)
+{
+    sylvan::sylvan_gc_RUN();
+    size_t size = llmsset_count_marked(sylvan::nodes);
+    std::cout << "Sylvan:RE: end:      " << size << " size\n";
+}
+
+int should_reordering_terminate()
+{
+    return terminate_reordering;
+}
+
+bool Dd::beforeReorder(){
+  //check if growth has finished
+  //if cant grow further, check ratio and time available
+  //if ratio greater than 90 and time available then reorder
+  // 
+  if (ddPackage == SYLVAN_PACKAGE){
+    size_t preUsed, preTotal;
+    Float ratio;
+    sylvan::sylvan_table_usage_RUN(&preUsed, &preTotal);
+    // printLine("Pre Used:"+to_string(preUsed)+"Pre total:"+to_string(preTotal));
+    // if the table is filled with more than x% data, start reordering
+    if (preUsed > preTotal * reordThresh) {
+      reordThresh += reordThreshInc;
+      reordThreshInc /= 2;
+      return true;
+    } else{
+      return false;
+    }
+  } else{ //CUDD
+    if (!noReordSinceGC){
+      return false;
+    }
+    if (mgr->ReadSlots() < lut){
+      return false; // dont do reordering until fast growth is complete
+    } else{
+      Float usedFrac = Cudd_ReadUsedSlots(mgr->getManager());
+      if (usedFrac > reordThresh){
+        reordThresh += reordThreshInc;
+        reordThreshInc /= 2;
+        return true;
+      } else{
+        return false;
+      }
+    }
+  /*
+    set loose upto to enable fast growth of unique table say to 80% of maxmem
+      fraction can be 2 or 1.5
+      it is given as number of slots
+    then can compare cudd_readslots to check size of unique table
+      this can give an idea of whether fast growth has terminated
+    then use cudd_readusedslots to see what fraction of slots are used.
+    or directly use Cudd_ReadMemoryInUse
+    how to set timelimit, or maxvartoswaplimit or maxswapslimit?
+      need to take into account time left, mem used 
+      need a parameter like minImprovement, which says terminate reordering after at least minImp improvment
+  */
+  }
+}
+
+void Dd::afterReorder(){
+  // if (ddPackage==SYLVAN_PACKAGE){
+  //   Float ratio;
+  //   sylvan::sylvan_table_usage_RUN(&postUsed, &postTotal);
+  //   printLine("Post Used:"+to_string(postUsed)+"Post total:"+to_string(postTotal));
+  //   ratio = (preUsed+0.0-postUsed)/preUsed;
+  //   printLine("Ratio is:"+to_string(ratio) );
+  // }
+  if (didReordering){
+    if (ddPackage == CUDD_PACKAGE){
+      if (mgr->getManager()->ddTotalNumberSwapping >= maxSwaps){
+        maxSwaps += maxSwapsInc;
+      }
+    }
+    noReordSinceGC = false;
+  }
+  didReordering = false;
+}
+
+void Dd::manualReorderCUDD1(Map<Int, vector<Int>> levelMaps){
+  DdManager* m = mgr->getManager();
+  assert(ddReorderPreprocess(m));
+  Int initialSize = m->keys - m->isolated;
+  int* perm = new int[mgr->ReadSize()];
+  Int minSize = initialSize;
+  Int minVOInd = 0; //unchanged
+  vector<Int> initialVO(mgr->ReadSize(),-1);
+  for (int i = 0; i<mgr->ReadSize();i++){
+    initialVO[mgr->ReadPerm(i)] = i; //inverted so as to allow easy restoring later
+  }
+  for (auto [i,vo] : levelMaps){
+    assert (i!=0);
+    assert(vo.size() == mgr->ReadSize());
+    for (int j = 0; j<vo.size();j++){
+      perm[j] = vo[j];
+    }
+    // cout<<"0\n";
+    mgr->ShuffleHeap(perm);
+    // cout<<"1\n";
+    Int newSize = m->keys - m->isolated;
+    if (newSize < minSize){
+      minSize = newSize;
+      minVOInd = i;
+    }
+  }
+  if (minVOInd != 0){
+    auto minVO = levelMaps[minVOInd];
+    for (int j = 0; j<minVO.size();j++){
+      perm[j] = minVO[j];
+    }
+    mgr->ShuffleHeap(perm);
+  } else{   // restore initialVO
+    assert(minSize == initialSize);
+    for (int j = 0; j<initialVO.size();j++){
+      perm[j] = initialVO[j];
+    }
+    mgr->ShuffleHeap(perm);
+  }
+  delete perm;
+}
+
+void Dd::manualReorderCUDD2(){
+  mgr->ReduceHeap(CUDD_REORDER_SYMM_SIFT);
+}
+
+void Dd::manualReorder(Map<Int, vector<Int>> levelMaps){
+  if (dynVarOrdering != 1 && dynVarOrdering != 2){
+    return;
+  }
+  if (beforeReorder()){
+    didReordering = true;
+    TimePoint reordStart = util::getTimePoint();
+    printLine("Starting reordering..");
+    if (ddPackage == SYLVAN_PACKAGE){
+      sylvan::Sylvan::reduceHeap();
+    } else{ //CUDD_PACKAGE
+      if (dynVarOrdering == 1){
+        manualReorderCUDD1(levelMaps);
+      }else { //dynVarOrdering == 2
+        manualReorderCUDD2();
+      } 
+    }
+    afterReorder();
+    printLine("Reordering done! Time taken: "+to_string(util::getDuration(reordStart)));
+  }
+}
+
+void Dd::init(string ddPackage_, Int numVars, bool logCounting_, bool atomicAbstract_, bool weightedCounting_, bool multiplePrecision_, Int tableRatio, Int initRatio, Int threadCount, Float maxMem, Int dynVarOrdering_, Int dotFileIndex_){
   ddPackage = ddPackage_;
   logCounting = logCounting_;
   atomicAbstract = atomicAbstract_;
   weightedCounting = weightedCounting_;
   multiplePrecision = multiplePrecision_;
   dotFileIndex = dotFileIndex_;
+  dynVarOrdering = dynVarOrdering_;
+  
+  reordThresh = 0.7;  reordThreshInc = 0.1;
+  maxSwaps = 500; maxSwapsInc = 500;
+  noReordSinceGC = false;
+  
   if (ddPackage == CUDD_PACKAGE){
     mgr = new Cudd(
-    0, // init num of BDD vars
+    numVars, // init num of BDD vars
     0, // init num of ZDD vars
     CUDD_UNIQUE_SLOTS, // init num of unique-table slots; cudd.h: #define CUDD_UNIQUE_SLOTS 256
     CUDD_CACHE_SLOTS, // init num of cache-table slots; cudd.h: #define CUDD_CACHE_SLOTS 262144
     maxMem * MEGA // maxMemory
     );
-    if (dynVarOrdering){
+    mgr->SetMaxMemory(maxMem*MEGA);
+    if (dynVarOrdering == 3){
       enableDynamicOrdering();
     }
+    Int lut = (maxMem*MEGA/sizeof(DdNode))/2;  //the default inside CUDD is 5. We want lut to be larger.
+    mgr->SetLooseUpTo(lut);
+    mgr->SetSiftMaxVar(10);
+    mgr->SetSiftMaxSwap(maxSwaps);
     mgr->AddHook(postGCHook, CUDD_POST_GC_HOOK);
     mgr->AddHook(preGCHook, CUDD_PRE_GC_HOOK);
     printLine("CUDD Max Mem: "+to_string(mgr->ReadMaxMemory()));
+    printLine("CUDD Max Cache Hard: "+to_string(mgr->ReadMaxCacheHard()));
   } else{
     lace_start(threadCount, 1000000); // auto-detect number of workers, use a 1,000,000 size task queue
     // Init Sylvan  
@@ -649,6 +831,20 @@ void Dd::init(string ddPackage_, bool logCounting_, bool atomicAbstract_, bool w
     sylvan_init_mtbdd();
     if (multiplePrecision) {
       sylvan::gmp_init();
+    }
+    sylvan::mtbdd_newlevels(numVars);
+    if(dynVarOrdering > 0){
+      sylvan_init_reorder();
+
+      sylvan_set_reorder_maxswap(maxSwaps);
+      sylvan_set_reorder_maxvar(50);
+      sylvan_set_reorder_threshold(256);
+      sylvan_set_reorder_maxgrowth(1.2f);
+      sylvan_set_reorder_timelimit(1 * 60 * 1000);
+
+      sylvan_re_hook_prere(TASK(reordering_start));
+      sylvan_re_hook_progre(TASK(reordering_progress));
+      sylvan_re_hook_postre(TASK(reordering_end));
     }
   }
 }

@@ -3,13 +3,22 @@
 #include "common.hpp"
 #include "formula.hpp"
 
-#include "../libraries/cudd/cplusplus/cuddObj.hh"
-#include "../libraries/cudd/cudd/cuddInt.h"
-#include "../libraries/cudd/util/util.h"
+// #include "../libraries/cudd/cplusplus/cuddObj.hh"
+// #include "../libraries/cudd/cudd/cuddInt.h"
+// #include "../libraries/cudd/util/util.h"
 
-#include "../libraries/sylvan/src/sylvan.h"
-#include "../libraries/sylvan/src/sylvan_gmp.h"
-#include "../libraries/sylvan/src/sylvan_obj.hpp"
+#include "cplusplus/cuddObj.hh"
+#include "cudd/cuddInt.h"
+#include "util/util.h"
+
+// #include "../libraries/sylvan/src/sylvan.h"
+// #include "../libraries/sylvan/src/sylvan_gmp.h"
+// #include "../libraries/sylvan/src/sylvan_obj.hpp"
+
+#include "sylvan.h"
+#include "sylvan_gmp.h"
+#include "sylvan_obj.hpp"
+#include "sylvan_int.h"
 
 #include <gmpxx.h>
 
@@ -80,8 +89,11 @@ public:
   Set<Int> getSupport() const;
   Dd getBoolDiff(const Dd& rightDd) const; // returns 0-1 DD for *this >= rightDd
   bool evalAssignment(vector<int>& ddVarAssignment) const;
+  
+  static Float getNegWt(Int ddVar);
   //getAbstraction is not a const method
   Dd getAbstraction(Map<Int,tuple<Float,Float,bool,Int>> ddVarWts, Float logBound, vector<pair<Int, Dd>>& maximizationStack, bool maximizerFormat, bool substitutionMaximization, Int verboseSolving);
+  
   Dd getPrunedDd(Float lowerBound) const;
   void writeDotFile(const string& dotFileDir = "./") const;
   static void writeInfoFile(const string& filePath);
@@ -110,9 +122,16 @@ public:
 
   static Dd getClauseDd(Map<Int, pair<Int,Int>> clauseDDVarSignAndAsmts, bool xorFlag);
 
-  static void init(string ddPackage_, bool logCounting_, bool atomicAbstract_=1, bool weightedCounting_=0, bool multiplePrecision_=0, Int tableRatio=0, Int initRatio=0, Int threadCount=1, Float maxMem=0, bool dynVarOrdering=0, Int dotFileIndex_=0);
-  static Float getNegWt(Int ddVar);
+  static void init(string ddPackage_, Int numVars, bool logCounting_, bool atomicAbstract_=1, bool weightedCounting_=0, bool multiplePrecision_=0, Int tableRatio=0, Int initRatio=0, Int threadCount=1, Float maxMem=0, Int dynVarOrdering_=0, Int dotFileIndex_=0);
   static void stop();
+  
+  
+  static void manualReorder(Map<Int, vector<Int>> levelMaps = Map<Int, vector<Int>>());
+  static bool beforeReorder();
+  static void afterReorder();
+  static void manualReorderCUDD1(Map<Int, vector<Int>> levelMaps);
+  static void manualReorderCUDD2();
+  
   private:
     static string ddPackage;
     static Cudd* mgr;
@@ -120,7 +139,12 @@ public:
     static bool atomicAbstract;
     static bool weightedCounting;
     static bool multiplePrecision;
+    static Int dynVarOrdering;
     static Int dotFileIndex;
+    static Int lut; //loose up to parameter for CUDD. Table grows fast without GC until these many slots are created.
+    static Float reordThresh, reordThreshInc;
+    static Int maxSwaps, maxSwapsInc;
+    static bool didReordering, noReordSinceGC; 
     static Map<Int, pair<Float,Float>> wtMap; 
 };
 } //end namespace dpve

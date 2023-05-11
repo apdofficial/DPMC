@@ -16,13 +16,18 @@ class Executor {
     Dd solveSubtree(const JoinNode* joinNode, const PruneMaxParams& pmParams, const Assignment& assignment = Assignment());
     Assignment getMaximizer(Int declaredVarCount);
     Executor(const Cnf& cnf, const Map<Int, Int>& cnfVarToDdVarMap, const vector<Int>& ddVarToCnfVarMap, const bool existRandom, 
-      const string joinPriority, const Int satFilter, const Int verboseSolving, const Int verboseProfiling);
+      const string joinPriority, const Int satFilter, const Int verboseSolving, const Int verboseProfiling,
+      const Map<Int, vector<Int>> levelMaps_ = Map<Int, vector<Int>>());
     
+    Float reOrdThresh = 0.7;
+
   private:
     const Cnf& cnf;
     const Map<Int, Int>& cnfVarToDdVarMap;
     const vector<Int>& ddVarToCnfVarMap;
     vector<pair<Int, Dd>> maximizationStack; // pair<DD var, derivative sign>
+    
+    const Map<Int, vector<Int>>& levelMaps;
 
     const bool existRandom;
     const string joinPriority; 
@@ -64,11 +69,13 @@ class Dpve{
     const io::InputParams& p;    
     Map<Int, Int> cnfVarToDdVarMap;
     const vector<Int> ddVarToCnfVarMap;
+    Map<Int,vector<Int>> levelMaps;
 
     void setLogBound();
 
     Number adjustSolutionToHiddenVar(const Number &apparentSolution, Int cnfVar, const bool additiveFlag);
     Number getAdjustedSolution(const Number &apparentSolution);
+    void reorder();
   public:
     Dpve(const io::InputParams& p);
     pair<Number, Assignment> computeSolution();
