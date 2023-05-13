@@ -75,7 +75,7 @@ Dd SatFilter::solveSubtree(const JoinNode* joinNode) {
         childDdQueue.push(childDd);
       }
       assert(!childDdQueue.empty());
-      Dd::manualReorder();
+      // Dd::manualReorder();
       while (childDdQueue.size() >= 2) {
         Dd dd1 = childDdQueue.top();
         childDdQueue.pop();
@@ -197,7 +197,7 @@ Dd Executor::solveSubtree(const JoinNode* joinNode, const PruneMaxParams& pmPara
     
     //Following call considers reordering if enabled.
     //Has internal checks to decide when to reorder
-    Dd::manualReorder(levelMaps);
+    // Dd::manualReorder(levelMaps);
     /*
     if (joinNodesProcessed>JoinNode::nodeCount*reOrdThresh){
       reOrdThresh += 0.05;

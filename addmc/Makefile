@@ -1,6 +1,13 @@
 # adapted from https://stackoverflow.com/questions/2394609/makefile-header-dependencies sophie and maximumfps
+ifeq ($(strip $(SYLDEV)),1)
+$(info Using sylvan-develop)
+GXX = g++ -DSYLDEV
+else
 GXX = g++
-CXXFLAGS = -Wfatal-errors -Wall -Wextra -Wpedantic -Wconversion -Wshadow
+SYLDEV =
+$(info Using plain sylvan (not develop))
+endif
+CXXFLAGS = #-Wfatal-errors -Wall -Wextra -Wpedantic -Wconversion -Wshadow
 ASSEMBLY_OPTIONS = -g -std=c++2a -Wno-register -O0
 LINK_OPTIONS = -lgmpxx -lgmp -lpthread -static # order matters
 
@@ -14,7 +21,11 @@ CUDD_TARGET = $(CUDD_LIB_DIR)/libcudd.a
 CUDD_INCLUSIONS = -I$(CUDD_DIR) -I$(CUDD_DIR)/cudd -I$(CUDD_DIR)/epd -I$(CUDD_DIR)/mtr -I$(CUDD_DIR)/st
 CUDD_LINKS = -L$(CUDD_LIB_DIR) -lcudd
 
+ifdef SYLDEV
 SYLVAN_DIR = libraries/sylvan-develop/
+else
+SYLVAN_DIR = libraries/sylvan/
+endif
 SYLVAN_BUILD_DIR = $(SYLVAN_DIR)/build
 SYLVAN_LIB_DIR = $(SYLVAN_BUILD_DIR)/src
 SYLVAN_TARGET = $(SYLVAN_LIB_DIR)/libsylvan.a

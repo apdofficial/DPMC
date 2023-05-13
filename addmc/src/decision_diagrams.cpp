@@ -49,7 +49,9 @@ bool Dd::disableDynamicOrdering() {
 }
 
 int Dd::postGCHook(DdManager *dd, const char *str, void *data){
-  printLine("GC done!");
+  Int memused = mgr->ReadMemoryInUse();
+  Int memMax = mgr->ReadMaxMemory();
+  printLine("GC done! memused: "+to_string(memused)+" / "+to_string(memMax)+" = "+to_string((memused+0.0)/memMax));
   noReordSinceGC = true;
   return 1;
 }
@@ -280,6 +282,7 @@ Dd Dd::getVarBdd(Int ddVar, bool val) {
 }
 
 Dd Dd::getBddAnd(const Dd& dd) const {
+  manualReorder();
   if (ddPackage == CUDD_PACKAGE) {
     return Dd(cubdd * dd.cubdd);
   } else{
@@ -288,6 +291,7 @@ Dd Dd::getBddAnd(const Dd& dd) const {
 }
 
 Dd Dd::getBddExists(vector<Int> ddVars, const vector<Int>& ddVarToCnfVarMap) const {
+  manualReorder();
   Dd cube = getOneBdd();
   for (auto& var : ddVars){
     cube = cube.getBddAnd(getVarBdd(var,true));
@@ -419,6 +423,7 @@ Float Dd::getNegWt(Int ddVar){
 }
 
 Dd Dd::getAbstraction(Map<Int,tuple<Float,Float,bool,Int>> ddVarWts, Float logBound, vector<pair<Int, Dd>>& maximizationStack, bool maximizerFormat, bool substitutionMaximization, Int verboseSolving){
+  manualReorder();
   if (atomicAbstract){
     if (ddPackage == CUDD_PACKAGE){
       ADD wCube = mgr->addOne();
@@ -514,6 +519,7 @@ Dd Dd::getComposition(Int ddVar, bool val) const {
 }
 
 Dd Dd::getProduct(const Dd& dd) const {
+  manualReorder();
   if (ddPackage == CUDD_PACKAGE) {
     return logCounting ? Dd(cuadd + dd.cuadd) : Dd(cuadd * dd.cuadd);
   }
@@ -623,6 +629,7 @@ void Dd::writeInfoFile(const string& filePath) {
   printLine("wrote CUDD info to file "+filePath);
 }
 
+#ifdef SYLDEV
 static size_t prev_size = 0;
 static int terminate_reordering = 0;
 
@@ -653,6 +660,7 @@ int should_reordering_terminate()
 {
     return terminate_reordering;
 }
+#endif
 
 bool Dd::beforeReorder(){
   //check if growth has finished
@@ -680,6 +688,7 @@ bool Dd::beforeReorder(){
       return false; // dont do reordering until fast growth is complete
     } else{
       Float usedFrac = Cudd_ReadUsedSlots(mgr->getManager());
+      printLine("Used fraction of slots: "+to_string(usedFrac)+"  ReordThresh:"+to_string(reordThresh)+" Expected usage: "+to_string(Cudd_ExpectedUsedSlots(mgr->getManager())));
       if (usedFrac > reordThresh){
         reordThresh += reordThreshInc;
         reordThreshInc /= 2;
@@ -766,6 +775,7 @@ void Dd::manualReorderCUDD1(Map<Int, vector<Int>> levelMaps){
 
 void Dd::manualReorderCUDD2(){
   mgr->ReduceHeap(CUDD_REORDER_SYMM_SIFT);
+  // mgr->ReduceHeap(CUDD_REORDER_SIFT); //in one test this took 294 secs compared to 299 secs for the symmetric version. So not much difference.
 }
 
 void Dd::manualReorder(Map<Int, vector<Int>> levelMaps){
@@ -777,13 +787,17 @@ void Dd::manualReorder(Map<Int, vector<Int>> levelMaps){
     TimePoint reordStart = util::getTimePoint();
     printLine("Starting reordering..");
     if (ddPackage == SYLVAN_PACKAGE){
+      #ifdef SYLDEV
       sylvan::Sylvan::reduceHeap();
+      #endif
     } else{ //CUDD_PACKAGE
+      printLine("NodeCount before reordering: "+to_string(mgr->ReadNodeCount()));
       if (dynVarOrdering == 1){
         manualReorderCUDD1(levelMaps);
       }else { //dynVarOrdering == 2
         manualReorderCUDD2();
-      } 
+      }
+      printLine("NodeCount after reordering: "+to_string(mgr->ReadNodeCount())); 
     }
     afterReorder();
     printLine("Reordering done! Time taken: "+to_string(util::getDuration(reordStart)));
@@ -800,7 +814,7 @@ void Dd::init(string ddPackage_, Int numVars, bool logCounting_, bool atomicAbst
   dynVarOrdering = dynVarOrdering_;
   
   reordThresh = 0.7;  reordThreshInc = 0.1;
-  maxSwaps = 500; maxSwapsInc = 500;
+  maxSwaps = 250; maxSwapsInc = 250;
   noReordSinceGC = false;
   
   if (ddPackage == CUDD_PACKAGE){
@@ -832,7 +846,10 @@ void Dd::init(string ddPackage_, Int numVars, bool logCounting_, bool atomicAbst
     if (multiplePrecision) {
       sylvan::gmp_init();
     }
+
+    #ifdef SYLDEV
     sylvan::mtbdd_newlevels(numVars);
+
     if(dynVarOrdering > 0){
       sylvan_init_reorder();
 
@@ -846,6 +863,7 @@ void Dd::init(string ddPackage_, Int numVars, bool logCounting_, bool atomicAbst
       sylvan_re_hook_progre(TASK(reordering_progress));
       sylvan_re_hook_postre(TASK(reordering_end));
     }
+    #endif
   }
 }
 
