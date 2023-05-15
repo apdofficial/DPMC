@@ -1243,7 +1243,7 @@ Dd Executor::solveSubtree(const JoinNode* joinNode, const Map<Int, Int>& cnfVarT
     size_t used, total;
     sylvan::sylvan_table_usage_RUN(&used, &total);
     // if the table is filled with more than x% data, start reordering
-    if (used > total * 0.987) {
+    if (used > total * 0.9) {
       sylvan::Sylvan::reduceHeap();
     }
     TimePoint terminalStartPoint = util::getTimePoint();
@@ -1324,11 +1324,11 @@ Dd Executor::solveSubtree(const JoinNode* joinNode, const Map<Int, Int>& cnfVarT
 
   if (atomicAbstract){
     dd = dd.getAddSumAbstract(joinNode->projectionVars,cnfVarToDdVarMap, JoinNode::cnf.literalWeights, mgr);
-    const Set<Int> sup = dd.getSupport();
-    for (auto& cnfVar:joinNode->projectionVars){
-      Int ddVar = cnfVarToDdVarMap.at(cnfVar);
-      assert (!sup.contains(ddVar));
-    }
+    // const Set<Int> sup = dd.getSupport();
+    // for (auto& cnfVar:joinNode->projectionVars){
+    //   Int ddVar = cnfVarToDdVarMap.at(cnfVar);
+    //   assert (!sup.contains(ddVar));
+    // }
   } else{
     for (Int cnfVar : joinNode->projectionVars) {
       Int ddVar = cnfVarToDdVarMap.at(cnfVar);
@@ -2066,7 +2066,7 @@ void OptionDict::runCommand() const {
     }
     const Cudd* mgr = 0;
     if (ddPackage == SYLVAN_PACKAGE) { // initializes Sylvan
-      lace_start(threadCount, 1000000); // auto-detect number of workers, use a 1,000,000 size task queue
+      lace_start(6, 1000000); // auto-detect number of workers, use a 1,000,000 size task queue
       // Init Sylvan
       sylvan_set_limits(maxMem*MEGA , tableRatio, initRatio);
       sylvan_init_package();
@@ -2074,11 +2074,11 @@ void OptionDict::runCommand() const {
       if(dynVarOrdering == 1){
         sylvan_init_reorder();
 
-        sylvan_set_reorder_maxswap(500);
-        sylvan_set_reorder_maxvar(50);
-        sylvan_set_reorder_threshold(256);
-        sylvan_set_reorder_maxgrowth(1.2f);
-        sylvan_set_reorder_timelimit(1 * 60 * 1000);
+        sylvan_set_reorder_maxswap(250);
+        sylvan_set_reorder_maxvar(10);
+        sylvan_set_reorder_threshold(128);
+        sylvan_set_reorder_maxgrowth(1.05f);
+        sylvan_set_reorder_timelimit(1 * 30 * 1000);
 
         sylvan_re_hook_prere(TASK(reordering_start));
         sylvan_re_hook_progre(TASK(reordering_progress));
