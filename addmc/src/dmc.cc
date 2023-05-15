@@ -594,6 +594,7 @@ Dd Dd::getVarDd(Int ddVar, bool val, const Cudd* mgr) {
   }
   MTBDD d0 = getZeroDd(mgr).mtbdd.GetMTBDD(); // handles logcounting case
   MTBDD d1= getOneDd(mgr).mtbdd.GetMTBDD(); // handles logcounting case
+
   // if (logCounting){
   //   return val? Dd(Mtbdd(sylvan::mtbdd_makenode(ddVar, d0, d1)).Log()) : Dd(Mtbdd(sylvan::mtbdd_makenode(ddVar, d1, d0)).Log());
   // }
@@ -1256,10 +1257,9 @@ Dd Executor::solveSubtree(const JoinNode* joinNode, const Map<Int, Int>& cnfVarT
     // updateVarDurations(joinNode, terminalStartPoint);
     // updateVarDdSizes(joinNode, *d);
   } else {
-    size_t used, total;
-    sylvan::sylvan_table_usage_RUN(&used, &total);
+    size_t size = llmsset_count_marked(sylvan::nodes);
     // if the table is filled with more than x% data, start reordering
-    if (used > total * 0.3) {
+    if (size > sylvan::nodes->max_size * 0.5) {
       sylvan::Sylvan::reduceHeap();
     }
   }
@@ -1988,6 +1988,20 @@ int should_reordering_terminate()
     return terminate_reordering;
 }
 
+VOID_TASK_0(gc_start)
+{
+   size_t used, total;
+   sylvan::sylvan_table_usage_RUN(&used, &total);
+   cout << "\nSylvan:GC: start:" << used << "/" << total << "\n";
+}
+
+VOID_TASK_0(gc_end)
+{
+   size_t used, total;
+   sylvan::sylvan_table_usage_RUN(&used, &total);
+   cout << "Sylvan:GC: end:" << used << "/" << total << "\n";
+}
+
 void OptionDict::runCommand() const {
   if (verboseSolving >= 1) {
     cout << "c processing command-line options...\n";
@@ -2073,7 +2087,7 @@ void OptionDict::runCommand() const {
       if(dynVarOrdering == 1){
         sylvan_init_reorder();
 
-        sylvan_set_reorder_maxswap(250);
+        sylvan_set_reorder_maxswap(250); // timit per variable
         sylvan_set_reorder_maxvar(10);
         sylvan_set_reorder_threshold(128);
         sylvan_set_reorder_maxgrowth(1.2f);
@@ -2082,6 +2096,9 @@ void OptionDict::runCommand() const {
         sylvan_re_hook_prere(TASK(reordering_start));
         sylvan_re_hook_progre(TASK(reordering_progress));
         sylvan_re_hook_postre(TASK(reordering_end));
+
+        sylvan::sylvan_gc_hook_pregc(TASK(gc_start));
+        sylvan::sylvan_gc_hook_postgc(TASK(gc_end));
       }
       if (multiplePrecision) {
         sylvan::gmp_init();
