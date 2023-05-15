@@ -2066,7 +2066,7 @@ void OptionDict::runCommand() const {
     }
     const Cudd* mgr = 0;
     if (ddPackage == SYLVAN_PACKAGE) { // initializes Sylvan
-      lace_start(4, 1000000); // auto-detect number of workers, use a 1,000,000 size task queue
+      lace_start(threadCount, 1000000); // auto-detect number of workers, use a 1,000,000 size task queue
       // Init Sylvan
       sylvan_set_limits(maxMem*MEGA , tableRatio, initRatio);
       sylvan_init_package();
