@@ -1240,12 +1240,6 @@ Dd Executor::solveSubtree(const JoinNode* joinNode, const Map<Int, Int>& cnfVarT
   // cout<<"Starting visit of joinNode number "<<joinNode->nodeIndex+1<<"\n";
 
   if (joinNode->isTerminal()) {
-    size_t used, total;
-    sylvan::sylvan_table_usage_RUN(&used, &total);
-    // if the table is filled with more than x% data, start reordering
-    if (used > total * 0.9) {
-      sylvan::Sylvan::reduceHeap();
-    }
     TimePoint terminalStartPoint = util::getTimePoint();
 
     joinNodesProcessed ++;
@@ -1261,9 +1255,14 @@ Dd Executor::solveSubtree(const JoinNode* joinNode, const Map<Int, Int>& cnfVarT
 
     // updateVarDurations(joinNode, terminalStartPoint);
     // updateVarDdSizes(joinNode, *d);
+  } else {
+    size_t used, total;
+    sylvan::sylvan_table_usage_RUN(&used, &total);
+    // if the table is filled with more than x% data, start reordering
+    if (used > total * 0.3) {
+      sylvan::Sylvan::reduceHeap();
+    }
   }
-
-
 
   TimePoint nonterminalStartPoint = util::getTimePoint();
   Dd dd = satFilter>0? ((Dd*)joinNode->dd)->getAdd() : Dd::getOneDd(mgr);
@@ -2077,8 +2076,8 @@ void OptionDict::runCommand() const {
         sylvan_set_reorder_maxswap(250);
         sylvan_set_reorder_maxvar(10);
         sylvan_set_reorder_threshold(128);
-        sylvan_set_reorder_maxgrowth(1.05f);
-        sylvan_set_reorder_timelimit(1 * 30 * 1000);
+        sylvan_set_reorder_maxgrowth(1.2f);
+        sylvan_set_reorder_timelimit(1 * 15 * 1000);
 
         sylvan_re_hook_prere(TASK(reordering_start));
         sylvan_re_hook_progre(TASK(reordering_progress));
