@@ -13,4 +13,4 @@
 [submodule "addmc/libraries/sylvan-develop"]
 	path = addmc/libraries/sylvan-develop
 	url = https://github.com/apdofficial/sylvan.git
-	branch = develop
+	branch = feature/MSC-46
