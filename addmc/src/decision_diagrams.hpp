@@ -27,6 +27,10 @@
 using sylvan::gmp_op_max_CALL;
 using sylvan::gmp_op_plus_CALL;
 using sylvan::gmp_op_times_CALL;
+using sylvan::gmp_op_convertToGMP_CALL;
+// using sylvan::gmp_op_convertToGMP_RUN;
+using sylvan::gmp_abstract_op_plus_CALL;
+using sylvan::mtbdd_uapply_RUN;
 using sylvan::mtbdd_apply_CALL;
 using sylvan::mtbdd_fprintdot_nc;
 using sylvan::mtbdd_getdouble;
@@ -44,6 +48,7 @@ using sylvan::MTBDD;
 
 using sylvan::Bdd;
 using sylvan::mtbdd_apply_RUN;
+using sylvan::mtbdd_abstract_RUN;
 
 using std::tuple;
 
@@ -92,7 +97,7 @@ public:
   
   static Float getNegWt(Int ddVar);
   //getAbstraction is not a const method
-  Dd getAbstraction(Map<Int,tuple<Float,Float,bool,Int>> ddVarWts, Float logBound, vector<pair<Int, Dd>>& maximizationStack, bool maximizerFormat, bool substitutionMaximization, Int verboseSolving);
+  Dd getAbstraction(Map<Int,tuple<Number,Number,bool,Int>> ddVarWts, Float logBound, vector<pair<Int, Dd>>& maximizationStack, bool maximizerFormat, bool substitutionMaximization, Int verboseSolving);
   
   Dd getPrunedDd(Float lowerBound) const;
   void writeDotFile(const string& dotFileDir = "./") const;
@@ -116,6 +121,7 @@ public:
   Dd getBddAnd(const Dd& dd) const;
   Dd getBddOr(const Dd& dd) const; // must be Bdd
   bool isTrue() const; // must be Bdd
+  bool isZero() const; // must be ADD
   Set<Int> getBddSupport() const;
   Dd getFilteredBdd(const Dd);
   Dd getAdd();
@@ -132,6 +138,7 @@ public:
   static void manualReorderCUDD1(Map<Int, vector<Int>> levelMaps);
   static void manualReorderCUDD2();
   
+  static bool noReordSinceGC; // needs to be public for sylvan gc hook which is not a member of Dd
   private:
     static string ddPackage;
     static Cudd* mgr;
@@ -143,8 +150,8 @@ public:
     static Int dotFileIndex;
     static Int lut; //loose up to parameter for CUDD. Table grows fast without GC until these many slots are created.
     static Float reordThresh, reordThreshInc;
-    static Int maxSwaps, maxSwapsInc;
-    static bool didReordering, noReordSinceGC; 
-    static Map<Int, pair<Float,Float>> wtMap; 
+    static Int maxSwaps, maxSwapsInc, swapTime;
+    static bool didReordering; 
+    static Map<Int, pair<Number,Number>> wtMap; 
 };
 } //end namespace dpve

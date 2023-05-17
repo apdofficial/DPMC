@@ -231,20 +231,24 @@ namespace {  // anonymous namespace. Local to this file
 }
 
 void dpve::io::printPreamble(int argc, char** argv){
-   std::cout << "name of program: " << argv[0] << '\n' ;
-   std::cout << "there are " << argc-1 << " (more) arguments, they are:\n" ;
+   printLine("name of program: "+string(argv[0])+"\n") ;
+   printLine("there are "+to_string(argc-1)+" (more) arguments, they are:  "," ") ;
    std::copy( argv+1, argv+argc, std::ostream_iterator<const char*>( std::cout, " " ) ) ;
-   cout<<"\n";
+   printLine();
 }
 
 void dpve::io::printInputLine(const string& line, Int lineIndex) {
-  cout << "c line " << right << setw(5) << lineIndex << ":" << (line.empty() ? "" : " " + line) << "\n";
+  cout << "c o line " << right << setw(5) << lineIndex << ":" << (line.empty() ? "" : " " + line) << "\n";
 }
 
 void dpve::io::printRowKey(const string& key, size_t keyWidth) {
   string prefix = key;
-  if (key != "s") {
+  if (key == "s"){ //s SATISFIABLE
+    //do nothing
+  } else if(key.starts_with("s ")) {
     prefix = "c " + prefix;
+  } else{
+    prefix = "c o " + prefix;
   }
 
   keyWidth = max(keyWidth, prefix.size() + 1);
@@ -359,11 +363,11 @@ void dpve::io::printLine(){
 }
 
 void dpve::io::printLine(string s, string e){
-  cout << "c c "<<s<<e<<std::flush;
+  cout << "c o "<<s<<e<<std::flush;
 }
 
 void dpve::io::printLine(char *s, char* e){
-  cout << "c c "<<s<<e<<std::flush;
+  cout << "c o "<<s<<e<<std::flush;
 }
 
 PruneMaxParams::PruneMaxParams(const Float logBound, const Int maximizerFormat, const bool maximizerVerification, 
@@ -487,7 +491,7 @@ const InputParams dpve::io::parseOptions(int argc, char** argv) {
   auto toolStartPoint = util::getTimePoint(); // global var
 
   PruneMaxParams pmParams(logBound,maximizerFormat,maximizerVerification,satSolverPruning,substitutionMaximization,thresholdModel);
-
+  Number::multiplePrecision = multiplePrecision;//IMPORTANT!!
   Cnf cnf(verboseCnf,randomSeed,weightedCounting,projectedCounting);
   cnf.readCnfFile(cnfFilePath);
   return InputParams(atomicAbstract, cnf, ddPackage, ddVarOrderHeuristic, dynVarOrdering, existRandom, initRatio, joinPriority, logCounting, multiplePrecision, maxMem, plannerWaitDuration, projectedCounting, pmParams, randomSeed, satFilter, tableRatio, threadCount, toolStartPoint, verboseCnf, verboseJoinTree, verboseProfiling, verboseSolving, weightedCounting);

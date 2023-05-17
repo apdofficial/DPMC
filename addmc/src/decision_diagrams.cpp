@@ -10,6 +10,7 @@ using dpve::Number;
 using dpve::io::printLine;
 using std::to_string;
 using dpve::Map;
+
 /* class Dd ================================================================= */
 
 size_t Dd::maxDdLeafCount;
@@ -20,7 +21,7 @@ Float Dd::pruningDuration;
 
 bool Dd::dynOrderEnabled = false;
 Float Dd::reordThresh, Dd::reordThreshInc;
-Int Dd::maxSwaps, Dd::maxSwapsInc, Dd::dynVarOrdering = 0, Dd::lut;
+Int Dd::maxSwaps, Dd::maxSwapsInc, Dd::swapTime, Dd::dynVarOrdering = 0, Dd::lut;
 bool Dd::didReordering, Dd::noReordSinceGC; 
 
 string Dd::ddPackage;
@@ -30,7 +31,7 @@ bool Dd::atomicAbstract = 0;
 bool Dd::weightedCounting = 0;
 bool Dd::multiplePrecision = 0;
 Int Dd::dotFileIndex = 0;
-Map<Int, pair<Float,Float>> Dd::wtMap;
+Map<Int, pair<Number,Number>> Dd::wtMap;
 
 bool Dd::enableDynamicOrdering() {
   assert(ddPackage == CUDD_PACKAGE);
@@ -202,7 +203,16 @@ Number Dd::extractConst() const {
   assert(mtbdd.isLeaf());
   if (multiplePrecision) {
     uint64_t val = mtbdd_getvalue(mtbdd.GetMTBDD());
-    return Number(mpq_class(reinterpret_cast<mpq_ptr>(val)));
+    mpq_ptr op = (mpq_ptr)val;
+    mpq_t mres;
+    mpq_init(mres);
+    mpq_set(mres,op);
+    // printLine(" "," ");
+    // mpq_out_str(stdout,10,mres);
+    // printLine();
+    Number n = Number(mpq_class(mres));
+    mpq_clear(mres);
+    return n;
   }
   return Number(mtbdd_getdouble(mtbdd.GetMTBDD()));
 }
@@ -358,6 +368,10 @@ Dd Dd::getAdd(){
   if (ddPackage == CUDD_PACKAGE){
     return logCounting? Dd(cubdd.Add().Log()) : Dd(cubdd.Add());
   } else{
+    if (multiplePrecision){
+      Mtbdd temp = Mtbdd(gmp_convertToGMP(sybdd.GetBDD()));
+      return Dd(temp);
+    }
     return logCounting? Dd(Mtbdd(sybdd).Log()): Dd(Mtbdd(sybdd));
   }
 }
@@ -409,7 +423,9 @@ Callers responsibility to convert as necessary.
 */
 Float Dd::getNegWt(Int ddVar){
   assert (ddVar>=0);
-  auto [posWt, negWt] = wtMap[ddVar];
+  assert(!multiplePrecision);
+  auto [posWtN, negWtN] = wtMap[ddVar];
+  Float posWt = posWtN.fraction, negWt = negWtN.fraction;
   if (negWt == 1){
     assert (posWt == 1);
   } else{
@@ -422,7 +438,7 @@ Float Dd::getNegWt(Int ddVar){
   return negWt;
 }
 
-Dd Dd::getAbstraction(Map<Int,tuple<Float,Float,bool,Int>> ddVarWts, Float logBound, vector<pair<Int, Dd>>& maximizationStack, bool maximizerFormat, bool substitutionMaximization, Int verboseSolving){
+Dd Dd::getAbstraction(Map<Int,tuple<Number,Number,bool,Int>> ddVarWts, Float logBound, vector<pair<Int, Dd>>& maximizationStack, bool maximizerFormat, bool substitutionMaximization, Int verboseSolving){
   manualReorder();
   if (atomicAbstract){
     if (ddPackage == CUDD_PACKAGE){
@@ -443,12 +459,22 @@ Dd Dd::getAbstraction(Map<Int,tuple<Float,Float,bool,Int>> ddVarWts, Float logBo
       }
     } else{
       assert(!weightedCounting);
-      sylvan::BddSet b;
-      for (auto ddVarWt : ddVarWts) {
-        Int ddVar = ddVarWt.first;
-        b.add((uint32_t)ddVar);
+      if (multiplePrecision){
+        Mtbdd temp = Mtbdd::mtbddOne();
+        for (auto ddVarWt : ddVarWts) {
+          Int ddVar = ddVarWt.first;
+          assert(ddVar>=0);
+          temp = temp.Times(Mtbdd::mtbddVar(ddVar));
+        }
+        return Dd(Mtbdd(gmp_abstract_plus(mtbdd.GetMTBDD(),temp.GetMTBDD())));
+      } else{
+        sylvan::BddSet b;
+        for (auto ddVarWt : ddVarWts) {
+          Int ddVar = ddVarWt.first;
+          b.add((uint32_t)ddVar);
+        }
+        return logCounting? mtbdd.AbstractLogSumExp(b) : mtbdd.AbstractPlus(b);
       }
-      return logCounting? mtbdd.AbstractLogSumExp(b) : mtbdd.AbstractPlus(b);
     }
   } else{
     Dd dd = *this;
@@ -557,6 +583,28 @@ Dd Dd::getXor(const Dd& dd) const {
   return logCounting ? Dd(cuadd.LogXor(dd.cuadd)) : Dd(cuadd.Xor(dd.cuadd));
 }
 
+bool Dd::isZero() const{
+  if (ddPackage == CUDD_PACKAGE){
+    return logCounting? cuadd.getNode() == mgr->minusInfinity().getNode() : cuadd.IsZero();
+  } else{
+    if (multiplePrecision){
+      mpq_t z;
+      mpq_init(z);
+      mpq_set_d(z,0);
+      MTBDD mz = mtbdd_gmp(z);
+      bool isZero = (mz == mtbdd.GetMTBDD());
+      mpq_clear(z);
+      return isZero;
+    } else{
+      // return logCounting? getConstDd(Number()).mtbdd.GetMTBDD() == mtbdd.GetMTBDD() : mtbdd.isZero();
+      // if (mtbdd.isLeaf()){
+      //   printLine("Found leaf value "+to_string(mtbdd_getdouble(mtbdd.GetMTBDD())));
+      // }
+      return mtbdd_getdouble(mtbdd.GetMTBDD()) == (logCounting? Number().getLog10() : 0);
+    }
+  }
+}
+
 Set<Int> Dd::getSupport() const {
   Set<Int> support;
   if (ddPackage == CUDD_PACKAGE) {
@@ -637,7 +685,8 @@ VOID_TASK_0(reordering_start)
 {
     sylvan::sylvan_gc_RUN();
     size_t size = llmsset_count_marked(sylvan::nodes);
-    std::cout << "\nSylvan:RE: start:    " << size << " size\n";
+    // std::cout << "\nSylvan:RE: start:    " << size << " size\n";
+    printLine("Sylvan size before reordering: "+to_string(size));
 }
 
 VOID_TASK_0(reordering_progress)
@@ -646,14 +695,16 @@ VOID_TASK_0(reordering_progress)
     // we need at least 40% reduction in size to continue
     if (size >= prev_size * 0.60) terminate_reordering = 1;
     else prev_size = size;
-    std::cout << "Sylvan:RE: progress: " << size << " size\n";
+    // std::cout << "Sylvan:RE: progress: " << size << " size\n";
+    printLine("Sylvan reordering progress size: "+to_string(size));
 }
 
 VOID_TASK_0(reordering_end)
 {
     sylvan::sylvan_gc_RUN();
     size_t size = llmsset_count_marked(sylvan::nodes);
-    std::cout << "Sylvan:RE: end:      " << size << " size\n";
+    // std::cout << "Sylvan:RE: end:      " << size << " size\n";
+    printLine("Sylvan size after reordering: "+to_string(size));
 }
 
 int should_reordering_terminate()
@@ -662,20 +713,36 @@ int should_reordering_terminate()
 }
 #endif
 
+VOID_TASK_0(gc_start)
+{
+   size_t used, total;
+   sylvan::sylvan_table_usage_RUN(&used, &total);
+  //  cout << "\nSylvan:GC: start:" << used << "/" << total << "\n";
+  printLine("Sylvan before GC. Used : "+to_string(used)+" out of "+to_string(total),"    ");
+}
+
+VOID_TASK_0(gc_end)
+{
+   size_t used, total;
+   sylvan::sylvan_table_usage_RUN(&used, &total);
+  //  cout << "Sylvan:GC: end:" << used << "/" << total << "\n";
+  Dd::noReordSinceGC = true;
+  printLine("Sylvan after GC. Used : "+to_string(used)+" out of "+to_string(total));
+}
+
 bool Dd::beforeReorder(){
   //check if growth has finished
   //if cant grow further, check ratio and time available
   //if ratio greater than 90 and time available then reorder
   // 
   if (ddPackage == SYLVAN_PACKAGE){
-    size_t preUsed, preTotal;
-    Float ratio;
-    sylvan::sylvan_table_usage_RUN(&preUsed, &preTotal);
-    // printLine("Pre Used:"+to_string(preUsed)+"Pre total:"+to_string(preTotal));
+    if (!noReordSinceGC){
+      return false;
+    }
+    size_t preUsed = llmsset_count_marked(sylvan::nodes);
     // if the table is filled with more than x% data, start reordering
-    if (preUsed > preTotal * reordThresh) {
-      reordThresh += reordThreshInc;
-      reordThreshInc /= 2;
+    if (preUsed > sylvan::nodes->max_size * reordThresh) { // comparing to max_size ensures table has grown fully
+      printLine("Used fraction: "+to_string(preUsed)+"/ "+to_string(sylvan::nodes->max_size)+"*"+to_string(reordThresh)+" = "+to_string(preUsed/(sylvan::nodes->max_size*reordThresh)));
       return true;
     } else{
       return false;
@@ -684,14 +751,16 @@ bool Dd::beforeReorder(){
     if (!noReordSinceGC){
       return false;
     }
+    if(mgr->ReadMemoryInUse()<0.75*mgr->ReadMaxMemory()){
+      return false;
+    }
     if (mgr->ReadSlots() < lut){
       return false; // dont do reordering until fast growth is complete
     } else{
       Float usedFrac = Cudd_ReadUsedSlots(mgr->getManager());
-      printLine("Used fraction of slots: "+to_string(usedFrac)+"  ReordThresh:"+to_string(reordThresh)+" Expected usage: "+to_string(Cudd_ExpectedUsedSlots(mgr->getManager())));
+      //printLine("Used fraction of slots: "+to_string(usedFrac)+"  ReordThresh:"+to_string(reordThresh)+" Expected usage: "+to_string(Cudd_ExpectedUsedSlots(mgr->getManager())));
       if (usedFrac > reordThresh){
-        reordThresh += reordThreshInc;
-        reordThreshInc /= 2;
+        printLine("Used fraction of slots: "+to_string(usedFrac)+"  ReordThresh:"+to_string(reordThresh)+" Expected usage: "+to_string(Cudd_ExpectedUsedSlots(mgr->getManager())));
         return true;
       } else{
         return false;
@@ -723,8 +792,18 @@ void Dd::afterReorder(){
   if (didReordering){
     if (ddPackage == CUDD_PACKAGE){
       if (mgr->getManager()->ddTotalNumberSwapping >= maxSwaps){
-        maxSwaps += maxSwapsInc;
+        maxSwaps = mgr->getManager()->ddTotalNumberSwapping + maxSwapsInc;
       }
+      reordThresh += reordThreshInc;
+      reordThreshInc /= 2.5; //need to be slightly more aggressive than 2
+    } else{ //Sylvan
+      reordThresh += reordThreshInc;
+      reordThreshInc /= 2;
+      swapTime *= 2;
+      maxSwaps += maxSwapsInc;
+      #ifdef SYLDEV
+      sylvan_set_reorder_timelimit(1 * swapTime * 1000);
+      #endif
     }
     noReordSinceGC = false;
   }
@@ -813,8 +892,8 @@ void Dd::init(string ddPackage_, Int numVars, bool logCounting_, bool atomicAbst
   dotFileIndex = dotFileIndex_;
   dynVarOrdering = dynVarOrdering_;
   
-  reordThresh = 0.7;  reordThreshInc = 0.1;
-  maxSwaps = 250; maxSwapsInc = 250;
+  reordThresh = 0.65;  reordThreshInc = 0.1;
+  maxSwaps = 250; maxSwapsInc = 250; swapTime = 15;
   noReordSinceGC = false;
   
   if (ddPackage == CUDD_PACKAGE){
@@ -846,7 +925,8 @@ void Dd::init(string ddPackage_, Int numVars, bool logCounting_, bool atomicAbst
     if (multiplePrecision) {
       sylvan::gmp_init();
     }
-
+    sylvan::sylvan_gc_hook_pregc(TASK(gc_start));
+    sylvan::sylvan_gc_hook_postgc(TASK(gc_end));
     #ifdef SYLDEV
     sylvan::mtbdd_newlevels(numVars);
 
@@ -854,14 +934,15 @@ void Dd::init(string ddPackage_, Int numVars, bool logCounting_, bool atomicAbst
       sylvan_init_reorder();
 
       sylvan_set_reorder_maxswap(maxSwaps);
-      sylvan_set_reorder_maxvar(50);
+      sylvan_set_reorder_maxvar(10);
       sylvan_set_reorder_threshold(256);
       sylvan_set_reorder_maxgrowth(1.2f);
-      sylvan_set_reorder_timelimit(1 * 60 * 1000);
+      sylvan_set_reorder_timelimit(1 * swapTime * 1000);
 
       sylvan_re_hook_prere(TASK(reordering_start));
       sylvan_re_hook_progre(TASK(reordering_progress));
       sylvan_re_hook_postre(TASK(reordering_end));
+      //gc hooks set above since they will be used even without reordering.
     }
     #endif
   }
@@ -874,7 +955,7 @@ void Dd::stop(){
   }else{
     printLine("Current CUDD used Mem: "+to_string(mgr->ReadMemoryInUse()));
     printLine("Total GC time: "+to_string(mgr->ReadGarbageCollectionTime()));
-    mgr->info();
+    //mgr->info();
     Cudd_Quit(mgr->getManager());
   }
 }

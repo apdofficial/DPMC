@@ -242,11 +242,12 @@ Dd Executor::solveSubtree(const JoinNode* joinNode, const PruneMaxParams& pmPara
       dd = childDdQueue.top();
     }
   }
-  Map<Int,tuple<Float,Float,bool, Int>> ddVarWts;
+  // Map<Int,tuple<Float,Float,bool, Int>> ddVarWts;
+  Map<Int,tuple<Number,Number,bool, Int>> ddVarWts;
   for (auto& pVar: joinNode->projectionVars){
     Int ddVar = cnfVarToDdVarMap.at(pVar);
-    Float posWt = cnf.literalWeights.at(pVar).fraction;
-    Float negWt = cnf.literalWeights.at(-pVar).fraction;
+    Number posWt = cnf.literalWeights.at(pVar);//.fraction;
+    Number negWt = cnf.literalWeights.at(-pVar);//.fraction;
     bool additiveFlag = cnf.outerVars.contains(pVar);
     if (existRandom) {
       additiveFlag = !additiveFlag;
@@ -261,7 +262,9 @@ Dd Executor::solveSubtree(const JoinNode* joinNode, const PruneMaxParams& pmPara
     ddVarWts[ddVar]={posWt,negWt,additiveFlag,asmt};
   }
   dd = dd.getAbstraction(ddVarWts,pmParams.logBound,maximizationStack,pmParams.maximizerFormat,pmParams.substitutionMaximization,verboseSolving);
-
+  if (dd.isZero()){
+    printLine("WARNING: Returned Dd after abstraction is zero at joinNode number "+to_string(joinNodesProcessed));
+  }
   const Set<Int> sup = dd.getSupport();
   for (auto& cnfVar:joinNode->projectionVars){
     Int ddVar = cnfVarToDdVarMap.at(cnfVar);
@@ -312,9 +315,10 @@ Number Dpve::adjustSolutionToHiddenVar(const Number &apparentSolution, Int cnfVa
     return apparentSolution;
   }
 
-  const Number& positiveWeight = p.cnf.literalWeights.at(cnfVar);
-  const Number& negativeWeight = p.cnf.literalWeights.at(-cnfVar);
+  const Number positiveWeight = p.cnf.literalWeights.at(cnfVar);
+  const Number negativeWeight = p.cnf.literalWeights.at(-cnfVar);
   if (additiveFlag) {
+    Number s = positiveWeight+negativeWeight;
     return p.logCounting ? (apparentSolution + (positiveWeight + negativeWeight).getLog10()) : (apparentSolution * (positiveWeight + negativeWeight));
   }
   else {
@@ -324,17 +328,14 @@ Number Dpve::adjustSolutionToHiddenVar(const Number &apparentSolution, Int cnfVa
 
 Number Dpve::getAdjustedSolution(const Number &apparentSolution) {
   Number n = apparentSolution;
-
   for (Int var = 1; var <= p.cnf.declaredVarCount; var++) { // processes inner vars
     if (!p.cnf.outerVars.contains(var)) {
       n = adjustSolutionToHiddenVar(n, var, p.existRandom);
     }
   }
-
   for (Int var : p.cnf.outerVars) {
     n = adjustSolutionToHiddenVar(n, var, !p.existRandom);
   }
-
   return n;
 }
 
