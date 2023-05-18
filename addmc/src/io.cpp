@@ -45,6 +45,7 @@ namespace {  // anonymous namespace. Local to this file
   const string PLANNER_WAIT_FLAG = "pw";
   const string RANDOM_SEED_FLAG = "rs";
   const string SAT_FILTER_FLAG = "sa";
+  const string SCALING_FACTOR_FLAG = "sc";
   const string SUBSTITUTION_MAXIMIZATION_FLAG = "sm";
   const string SAT_SOLVER_PRUNING = "sp";
   const string SLICE_VAR_FLAG = "sv";
@@ -225,6 +226,10 @@ namespace {  // anonymous namespace. Local to this file
     return "0 - Disable SatFilter (Only Executor) / 1 - Only SatFilter / 2 - SatFilter + Executor. Default 0.";
   }
 
+  string helpScalingFactor() {
+    return "Multiply final count by 2**sc before display. Default 0.";
+  }
+
   string helpAtomicAbstract() {
     return "0/1 - Disable/Enable single step abstraction operation. (to enable, er_arg=0 pc_arg=0 dp_arg=c or if dp_arg=s then additionally wc_arg=0 required) Default 0.";
   }
@@ -379,7 +384,7 @@ PruneMaxParams::PruneMaxParams(const Float logBound, const Int maximizerFormat, 
 InputParams::InputParams(const bool atomicAbstract, const Cnf cnf, const string ddPackage, 
     const Int ddVarOrderHeuristic, const Int dynVarOrdering, const bool existRandom, const Int initRatio, const string joinPriority, const bool logCounting,
     const bool multiplePrecision, const Float maxMem, const Float plannerWaitDuration, 
-    const bool projectedCounting, const PruneMaxParams pmParams, const Int randomSeed, const Int satFilter, 
+    const bool projectedCounting, const PruneMaxParams pmParams, const Int randomSeed, const Int satFilter, const Float scalingFactor,
     const Int tableRatio, const Int threadCount, const TimePoint toolStartPoint, 
     const Int verboseCnf, const Int verboseJoinTree, const Int verboseProfiling, const Int verboseSolving, const bool weightedCounting):
     
@@ -399,6 +404,7 @@ InputParams::InputParams(const bool atomicAbstract, const Cnf cnf, const string 
     pmParams(pmParams),
     randomSeed(randomSeed),
     satFilter(satFilter),
+    scalingFactor(scalingFactor),
     tableRatio(tableRatio),
     threadCount(threadCount),
     toolStartPoint(toolStartPoint),
@@ -434,6 +440,7 @@ const InputParams dpve::io::parseOptions(int argc, char** argv) {
     (RANDOM_SEED_FLAG, "random seed; int", value<Int>()->default_value("0"))
     (DYN_ORDER_FLAG, helpDynamicVarOrdering(), value<Int>()->default_value("0"))
     (SAT_FILTER_FLAG, helpSatFilter(), value<Int>()->default_value("0"))
+    (SCALING_FACTOR_FLAG, helpScalingFactor(), value<Float>()->default_value("0"))
     (ATOMIC_ABSTRACT_FLAG, helpAtomicAbstract(), value<Int>()->default_value("0"))
     (DD_VAR_FLAG, helpDiagramVarOrderHeuristic(), value<Int>()->default_value(to_string(MCS_HEURISTIC)))
     (MAX_MEM_FLAG, "maximum memory (in MB) for unique table and cache table combined [or 0 for unlimited memory with CUDD]; float", value<Float>()->default_value("4e3"))
@@ -474,6 +481,7 @@ const InputParams dpve::io::parseOptions(int argc, char** argv) {
   auto randomSeed = result[RANDOM_SEED_FLAG].as<Int>(); // global var
   auto dynVarOrdering = result[DYN_ORDER_FLAG].as<Int>();
   auto satFilter = result[SAT_FILTER_FLAG].as<Int>();
+  auto scalingFactor = result[SCALING_FACTOR_FLAG].as<Float>();
   auto atomicAbstract = result[ATOMIC_ABSTRACT_FLAG].as<Int>();
   auto ddVarOrderHeuristic = result[DD_VAR_FLAG].as<Int>();
   auto maxMem = result[MAX_MEM_FLAG].as<Float>(); // global var
@@ -494,7 +502,7 @@ const InputParams dpve::io::parseOptions(int argc, char** argv) {
   Number::multiplePrecision = multiplePrecision;//IMPORTANT!!
   Cnf cnf(verboseCnf,randomSeed,weightedCounting,projectedCounting);
   cnf.readCnfFile(cnfFilePath);
-  return InputParams(atomicAbstract, cnf, ddPackage, ddVarOrderHeuristic, dynVarOrdering, existRandom, initRatio, joinPriority, logCounting, multiplePrecision, maxMem, plannerWaitDuration, projectedCounting, pmParams, randomSeed, satFilter, tableRatio, threadCount, toolStartPoint, verboseCnf, verboseJoinTree, verboseProfiling, verboseSolving, weightedCounting);
+  return InputParams(atomicAbstract, cnf, ddPackage, ddVarOrderHeuristic, dynVarOrdering, existRandom, initRatio, joinPriority, logCounting, multiplePrecision, maxMem, plannerWaitDuration, projectedCounting, pmParams, randomSeed, satFilter, scalingFactor, tableRatio, threadCount, toolStartPoint, verboseCnf, verboseJoinTree, verboseProfiling, verboseSolving, weightedCounting);
 }
 
 bool dpve::io::validateOptions(InputParams& p){

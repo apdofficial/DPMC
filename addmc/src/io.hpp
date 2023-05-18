@@ -40,6 +40,7 @@ namespace io{
       const PruneMaxParams pmParams;
       const Int randomSeed;
       const Int satFilter;
+      const Float scalingFactor; //preprocessors eg Arjun return a scalingFactor f such that final count c must be multiplied by (2**f) i.e. c*(2**f)
       const Int tableRatio; // log2(unique_table / cache_table)
       const Int threadCount;
       const TimePoint toolStartPoint;
@@ -53,7 +54,7 @@ namespace io{
       InputParams(const bool atomicAbstract, const Cnf cnf, const string ddPackage, 
         const Int ddVarOrderHeuristic, const Int dynVarOrdering, const bool existRandom, const Int initRatio, const string joinPriority, 
         const bool logCounting, const bool multiplePrecision, const Float maxMem, const Float plannerWaitDuration, 
-        const bool projectedCounting, const PruneMaxParams pmParams, const Int randomSeed, const Int satFilter, 
+        const bool projectedCounting, const PruneMaxParams pmParams, const Int randomSeed, const Int satFilter, const Float scalingFactor,
         const Int tableRatio, const Int threadCount, const TimePoint toolStartPoint, 
         const Int verboseCnf, const Int verboseJoinTree, const Int verboseProfiling, const Int verboseSolving, const bool weightedCounting);
     private:

@@ -239,8 +239,10 @@ void JoinTreeProcessor::finishReadingJoinTree() {
     }
 
     joinTreeEndLineIndex = lineIndex;
-    backupJoinTree = joinTree;
-    JoinNode::resetStaticFields();
+    if (backupJoinTree==nullptr || joinTree->width < backupJoinTree->width){
+      backupJoinTree = joinTree;
+      JoinNode::resetStaticFields(); 
+    }
   }
 
   problemLineIndex = MIN_INT;
@@ -302,6 +304,11 @@ JoinTreeProcessor::JoinTreeProcessor(Float plannerWaitDuration, const Cnf& cnf):
     joinTree = backupJoinTree;
     JoinNode::restoreStaticFields();
     // joinTree->printTree();
+  } else{
+    if (backupJoinTree != nullptr && backupJoinTree->width < joinTree->width){
+      joinTree = backupJoinTree;
+      JoinNode::restoreStaticFields();
+    }
   }
 
   cout << "c getting join tree from stdin: done\n";

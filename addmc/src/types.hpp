@@ -65,5 +65,7 @@ public:
   Number operator+(const Number& n) const;
   Number& operator+=(const Number& n);
   Number operator-(const Number& n) const;
+
+  static Number mul_exp2(const Number n, const Int exp);
 };
 } //end namespace dpve

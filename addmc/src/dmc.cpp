@@ -336,6 +336,17 @@ Number Dpve::getAdjustedSolution(const Number &apparentSolution) {
   for (Int var : p.cnf.outerVars) {
     n = adjustSolutionToHiddenVar(n, var, !p.existRandom);
   }
+  if (p.scalingFactor == 0){
+    //do nothing
+  } else{
+    if(p.logCounting){
+      //convert to log first
+      Number sf = Number(p.scalingFactor/log2(10));
+      n += sf; //adding since we are in logscale
+    } else{
+      n = Number::mul_exp2(n,p.scalingFactor); //scalingFactor is implicitly cast to int here
+    } 
+  }
   return n;
 }
 

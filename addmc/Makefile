@@ -8,7 +8,7 @@ SYLDEV =
 $(info Using plain sylvan (not develop))
 endif
 CXXFLAGS = #-Wfatal-errors -Wall -Wextra -Wpedantic -Wconversion -Wshadow
-ASSEMBLY_OPTIONS = -g -std=c++2a -Wno-register #-O3 -flto
+ASSEMBLY_OPTIONS = -std=c++2a -Wno-register -O3 -flto #-g
 LINK_OPTIONS = -lgmpxx -lgmp -lpthread -static # order matters
 
 ################################################################################

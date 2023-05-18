@@ -908,7 +908,8 @@ void Dd::init(string ddPackage_, Int numVars, bool logCounting_, bool atomicAbst
     if (dynVarOrdering == 3){
       enableDynamicOrdering();
     }
-    Int lut = (maxMem*MEGA/sizeof(DdNode))/2;  //the default inside CUDD is 5. We want lut to be larger.
+    mgr->makeTerse(); // to prevent printing spurious lines whcih wont have "c o " prefix required by MCC
+    Int lut = (maxMem*MEGA/sizeof(DdNode))/3;  //the default inside CUDD is 5. We want lut to be larger.
     mgr->SetLooseUpTo(lut);
     mgr->SetSiftMaxVar(10);
     mgr->SetSiftMaxSwap(maxSwaps);

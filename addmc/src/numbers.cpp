@@ -83,6 +83,22 @@ Float Number::getLogSumExp(const Number& n) const {
   return log10l(exp10l(fraction - m) + exp10l(n.fraction - m)) + m; // base-10 Cudd_addLogSumExp
 }
 
+Number Number::mul_exp2(const Number n, const Int exp){
+  if (multiplePrecision){
+    mpz_t pow;
+    mpz_init(pow);
+    mpz_ui_pow_ui(pow,2,exp);
+    mpz_class factor(pow);
+    mpz_clear(pow);
+    mpq_class res(n.quotient);
+    res *= factor;
+    res /= n.quotient.get_den();
+    res.canonicalize();
+    return Number(res);
+  }
+  return Number(n*(pow(2,exp)));
+}
+
 bool Number::operator==(const Number& n) const {
   if (multiplePrecision) {
     return quotient == n.quotient;
