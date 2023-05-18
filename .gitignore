@@ -7,6 +7,8 @@ mcc/bin/htb
 mcc/bin/lg
 mcc/*.zip
 
+addmc/build
+addmc/old
 addmc/dmc
 addmc/htb
 dmc/dmc
