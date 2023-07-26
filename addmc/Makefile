@@ -22,9 +22,9 @@ CUDD_INCLUSIONS = -I$(CUDD_DIR) -I$(CUDD_DIR)/cudd -I$(CUDD_DIR)/epd -I$(CUDD_DI
 CUDD_LINKS = -L$(CUDD_LIB_DIR) -lcudd
 
 ifdef SYLDEV
-SYLVAN_DIR = libraries/sylvan-develop/
+SYLVAN_DIR = libraries/sylvan-develop
 else
-SYLVAN_DIR = libraries/sylvan/
+SYLVAN_DIR = libraries/sylvan
 endif
 SYLVAN_BUILD_DIR = $(SYLVAN_DIR)/build
 SYLVAN_LIB_DIR = $(SYLVAN_BUILD_DIR)/src
@@ -80,6 +80,28 @@ $(BUILD_DIR)/%.o : %.cpp
 	# The -MMD flags additionaly creates a .d file with
 	# the same name as the .o file.
 	$(GXX) -MMD $(ASSEMBLY_OPTIONS) $(CXXFLAGS) $(CUDD_INCLUSIONS) $(SYLVAN_INCLUSIONS) $(CMSAT_INCLUSIONS) -c $< -o $@
+
+
+$(CUDD_TARGET): $(shell find $(CUDD_DIR)/cudd -name "*.c" -o -name "*.h") $(shell find $(CUDD_DIR)/cplusplus -name "*.cc" -o -name "*.hh")
+	cd $(CUDD_DIR) && autoreconf
+	cd $(CUDD_DIR) && ./configure --silent --enable-obj
+	cd $(CUDD_DIR) && make -s
+
+$(SYLVAN_TARGET):
+	mkdir -p $(SYLVAN_BUILD_DIR)
+	cd $(SYLVAN_BUILD_DIR) && cmake .. -DBUILD_SHARED_LIBS=off -DSYLVAN_GMP=on
+	cd $(SYLVAN_BUILD_DIR) && make -s
+
+$(CMSAT_TARGET):
+	mkdir -p $(CMSAT_BUILD_DIR)
+	cd $(CMSAT_BUILD_DIR) && cmake .. -DSTATICCOMPILE=on -DONLY_SIMPLE=ON -DNOZLIB=ON -DNOM4RI=ON -DNOSQLITE=ON
+	cd $(CMSAT_BUILD_DIR) && make -s
+
+cudd: $(CUDD_TARGET)
+
+sylvan: $(SYLVAN_TARGET)
+
+cryptominisat: $(CMSAT_TARGET)
 
 .PHONY : clean
 clean :
