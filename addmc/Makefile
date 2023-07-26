@@ -89,7 +89,7 @@ $(CUDD_TARGET): $(shell find $(CUDD_DIR)/cudd -name "*.c" -o -name "*.h") $(shel
 
 $(SYLVAN_TARGET):
 	mkdir -p $(SYLVAN_BUILD_DIR)
-	cd $(SYLVAN_BUILD_DIR) && cmake .. -DBUILD_SHARED_LIBS=off -DSYLVAN_GMP=on
+	cd $(SYLVAN_BUILD_DIR) && cmake .. -DBUILD_SHARED_LIBS=off -DSYLVAN_GMP=on -DCMAKE_BUILD_TYPE=Release
 	cd $(SYLVAN_BUILD_DIR) && make -s
 
 $(CMSAT_TARGET):

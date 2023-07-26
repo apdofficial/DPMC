@@ -980,9 +980,9 @@ void Dd::init(string ddPackage_, Int numVars, bool logCounting_, bool atomicAbst
 //      sylvan::sylvan_set_reorder_maxgrowth(1.2f);
 //      sylvan::sylvan_set_reorder_timelimit_se(1 * swapTime * 1000);
 
-            sylvan::sylvan_re_hook_prere(TASK(reordering_start));
-            sylvan::sylvan_re_hook_progre(TASK(reordering_progress));
-            sylvan::sylvan_re_hook_postre(TASK(reordering_end));
+//            sylvan::sylvan_re_hook_prere(TASK(reordering_start));
+//            sylvan::sylvan_re_hook_progre(TASK(reordering_progress));
+//            sylvan::sylvan_re_hook_postre(TASK(reordering_end));
             //gc hooks set above since they will be used even without reordering.
         }
     }
