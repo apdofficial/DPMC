@@ -10,7 +10,3 @@
 [submodule "addmc/libraries/sylvan"]
 	path = addmc/libraries/sylvan
 	url = git@github.com:allrtaken/sylvan.git
-[submodule "addmc/libraries/sylvan-develop"]
-	path = addmc/libraries/sylvan-develop
-	url = https://github.com/apdofficial/sylvan.git
-	branch = feature/MSC-46
