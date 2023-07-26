@@ -86,7 +86,7 @@ int Dd::postReorderHook(DdManager *dd, const char *str, void *data)
 int Dd::preReorderHook(DdManager *dd, const char *str, void *data)
 {
     Cudd_ReorderingType
-    method = (Cudd_ReorderingType)(ptruint)
+            method = (Cudd_ReorderingType)(ptruint)
     data;
     int retval;
 
@@ -725,41 +725,26 @@ void Dd::writeInfoFile(const string &filePath)
     printLine("wrote CUDD info to file " + filePath);
 }
 
-#ifdef SYLDEV
-static size_t prev_size = 0;
-static int terminate_reordering = 0;
-
 VOID_TASK_0(reordering_start)
 {
-    sylvan::sylvan_gc_RUN();
+//    sylvan::sylvan_gc_RUN();
     size_t size = llmsset_count_marked(sylvan::nodes);
-    // std::cout << "\nSylvan:RE: start:    " << size << " size\n";
     printLine("Sylvan size before reordering: "+to_string(size));
 }
 
 VOID_TASK_0(reordering_progress)
 {
     size_t size = llmsset_count_marked(sylvan::nodes);
-    // we need at least 40% reduction in size to continue
-    if (size >= prev_size * 0.60) terminate_reordering = 1;
-    else prev_size = size;
-    // std::cout << "Sylvan:RE: progress: " << size << " size\n";
     printLine("Sylvan reordering progress size: "+to_string(size));
 }
 
 VOID_TASK_0(reordering_end)
 {
-    sylvan::sylvan_gc_RUN();
+//    sylvan::sylvan_gc_RUN();
     size_t size = llmsset_count_marked(sylvan::nodes);
-    // std::cout << "Sylvan:RE: end:      " << size << " size\n";
-    printLine("Sylvan size after reordering: "+to_string(size));
+    printLine("Sylvan size after reordering: "+ to_string(size));
 }
 
-int should_reordering_terminate()
-{
-    return terminate_reordering;
-}
-#endif
 
 VOID_TASK_0(gc_start)
 {
@@ -773,7 +758,7 @@ VOID_TASK_0(gc_end)
     size_t used, total;
     sylvan::sylvan_table_usage_RUN(&used, &total);
     Dd::noReordSinceGC = true;
-    printLine("Sylvan after GC. Used : " + to_string(used) + " out of " + to_string(total) + "\n");
+    printLine("Sylvan after GC.  Used : " + to_string(used) + " out of " + to_string(total));
 }
 
 bool Dd::beforeReorder()
@@ -903,7 +888,7 @@ void Dd::manualReorderCUDD1(Map<Int, vector<Int>> levelMaps)
 
 void Dd::manualReorderCUDD2()
 {
-    mgr->ReduceHeap(CUDD_REORDER_SYMM_SIFT);
+    mgr->ReduceHeap(CUDD_REORDER_GROUP_SIFT);
     // mgr->ReduceHeap(CUDD_REORDER_SIFT); //in one test this took 294 secs compared to 299 secs for the symmetric version. So not much difference.
 }
 
@@ -983,10 +968,11 @@ void Dd::init(string ddPackage_, Int numVars, bool logCounting_, bool atomicAbst
         }
         sylvan::sylvan_gc_hook_pregc(TASK(gc_start));
         sylvan::sylvan_gc_hook_postgc(TASK(gc_end));
-        sylvan::levels_new_many(numVars);
+
 
         if (dynVarOrdering > 0) {
             sylvan::sylvan_init_reorder();
+            sylvan::levels_new_many(numVars);
 
 //      sylvan::sylvan_set_reorder_maxswap(maxSwaps);
 //      sylvan::sylvan_set_reorder_maxvar(10);
