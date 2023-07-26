@@ -802,7 +802,7 @@ void Dd::afterReorder(){
       swapTime *= 2;
       maxSwaps += maxSwapsInc;
       #ifdef SYLDEV
-      sylvan_set_reorder_timelimit(1 * swapTime * 1000);
+//      sylvan_set_reorder_timelimit(1 * swapTime * 1000);
       #endif
     }
     noReordSinceGC = false;
@@ -929,20 +929,21 @@ void Dd::init(string ddPackage_, Int numVars, bool logCounting_, bool atomicAbst
     sylvan::sylvan_gc_hook_pregc(TASK(gc_start));
     sylvan::sylvan_gc_hook_postgc(TASK(gc_end));
     #ifdef SYLDEV
-    sylvan::mtbdd_newlevels(numVars);
+    sylvan::levels_new_many(numVars);
 
     if(dynVarOrdering > 0){
-      sylvan_init_reorder();
+        sylvan::sylvan_init_reorder();
 
-      sylvan_set_reorder_maxswap(maxSwaps);
-      sylvan_set_reorder_maxvar(10);
-      sylvan_set_reorder_threshold(256);
-      sylvan_set_reorder_maxgrowth(1.2f);
-      sylvan_set_reorder_timelimit(1 * swapTime * 1000);
 
-      sylvan_re_hook_prere(TASK(reordering_start));
-      sylvan_re_hook_progre(TASK(reordering_progress));
-      sylvan_re_hook_postre(TASK(reordering_end));
+//      sylvan_set_reorder_maxswap(maxSwaps);
+//      sylvan_set_reorder_maxvar(10);
+//      sylvan_set_reorder_threshold(256);
+//      sylvan_set_reorder_maxgrowth(1.2f);
+//      sylvan_set_reorder_timelimit_se(1 * swapTime * 1000);
+
+      sylvan::sylvan_re_hook_prere(TASK(reordering_start));
+      sylvan::sylvan_re_hook_progre(TASK(reordering_progress));
+      sylvan::sylvan_re_hook_postre(TASK(reordering_end));
       //gc hooks set above since they will be used even without reordering.
     }
     #endif

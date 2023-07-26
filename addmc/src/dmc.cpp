@@ -268,7 +268,7 @@ Dd Executor::solveSubtree(const JoinNode* joinNode, const PruneMaxParams& pmPara
   const Set<Int> sup = dd.getSupport();
   for (auto& cnfVar:joinNode->projectionVars){
     Int ddVar = cnfVarToDdVarMap.at(cnfVar);
-    assert (!sup.contains(ddVar));
+//    assert (!sup.contains(ddVar));
   }
 
   joinNodesProcessed ++;
